@@ -1,0 +1,75 @@
+.cue-spin {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cue-spin__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cue-spin__title {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.85rem;
+  color: rgba(244, 246, 251, 0.65);
+}
+
+.cue-spin__readout {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(244, 246, 251, 0.8);
+}
+
+.cue-spin__pad {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid var(--mega-border);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08), rgba(5, 6, 12, 0.8));
+  padding: 1.2rem;
+  touch-action: none;
+}
+
+.cue-spin__ball {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 15px 30px rgba(0, 0, 0, 0.5);
+}
+
+.cue-spin__target {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cue-spin__target span {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-radius: 50%;
+  border: 2px solid var(--mega-secondary);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
+  background: rgba(34, 211, 238, 0.15);
+}
+
+.cue-spin__axes {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: rgba(244, 246, 251, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
