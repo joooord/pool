@@ -156,6 +156,33 @@
   color: rgba(244, 246, 251, 0.65);
 }
 
+.control-sandbox__presets-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.preset-save {
+  border-radius: 16px;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  cursor: pointer;
+}
+
+.control-sandbox__customs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.preset-chip--ghost {
+  border-style: dashed;
+  opacity: 0.8;
+}
+
 .camera-button {
   flex: 1;
   min-width: 180px;
@@ -205,8 +232,11 @@
     grid-column: span 1;
   }
 
-  .control-sandbox__header-actions {
+  .control-sandbox__header-actions,
+  .control-sandbox__presets-header {
     align-items: flex-start;
+    flex-direction: column;
+    width: 100%;
   }
 
   .preset-chip,

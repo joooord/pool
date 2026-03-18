@@ -23,9 +23,14 @@ interface ShotSimulationConfig {
   sampleRate?: number // frames collected per second
 }
 
+export const SHOT_TABLE = {
+  width: 260,
+  height: 130,
+}
+
 const DEFAULT_CONFIG: ShotSimulationConfig = {
-  tableWidth: 260,
-  tableHeight: 130,
+  tableWidth: SHOT_TABLE.width,
+  tableHeight: SHOT_TABLE.height,
   cushion: 8,
   sampleRate: 60,
 }

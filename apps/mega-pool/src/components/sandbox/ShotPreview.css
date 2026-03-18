@@ -31,6 +31,36 @@
   opacity: 0.35;
 }
 
+.shot-preview__sim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.shot-preview__trail {
+  fill: none;
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.shot-preview__trail--cue {
+  stroke: rgba(82, 236, 255, 0.85);
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.5));
+}
+
+.shot-preview__trail--target {
+  stroke: rgba(255, 168, 88, 0.9);
+  stroke-dasharray: 3 3;
+}
+
+.shot-preview__impact {
+  fill: #ffe28f;
+  filter: drop-shadow(0 0 6px rgba(255, 226, 143, 0.8));
+}
+
 .shot-preview__aim-vector {
   position: absolute;
   top: 62%;

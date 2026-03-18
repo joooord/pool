@@ -1,5 +1,7 @@
-import type { CSSProperties } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import type { SpinVector } from './CueBallSpinControl'
+import type { ShotFrame } from '../../hooks/useShotSimulation'
+import { SHOT_TABLE } from '../../hooks/useShotSimulation'
 import './ShotPreview.css'
 
 const CAMERA_COPY: Record<string, string> = {
@@ -14,9 +16,10 @@ interface ShotPreviewProps {
   spin: SpinVector
   cameraMode: keyof typeof CAMERA_COPY
   shotLabel: string
+  frames?: ShotFrame[]
 }
 
-export function ShotPreview({ aimAngle, power, spin, cameraMode, shotLabel }: ShotPreviewProps) {
+export function ShotPreview({ aimAngle, power, spin, cameraMode, shotLabel, frames }: ShotPreviewProps) {
   const cueOffsetX = spin.x * 16
   const cueOffsetY = -spin.y * 16
   const aimLength = 35 + power * 55
@@ -28,11 +31,48 @@ export function ShotPreview({ aimAngle, power, spin, cameraMode, shotLabel }: Sh
   const postImpactAngle = aimAngle + spin.x * 20
   const postImpactLength = 30 + Math.abs(spin.y) * 40
 
+  const cueTrail = useMemo(() => {
+    if (!frames?.length) return ''
+    return frames
+      .map((frame) => `${((frame.cue.x / SHOT_TABLE.width) * 100).toFixed(2)},${((frame.cue.y / SHOT_TABLE.height) * 100).toFixed(2)}`)
+      .join(' ')
+  }, [frames])
+
+  const targetTrail = useMemo(() => {
+    if (!frames?.length) return ''
+    return frames
+      .map((frame) => `${((frame.target.x / SHOT_TABLE.width) * 100).toFixed(2)},${((frame.target.y / SHOT_TABLE.height) * 100).toFixed(2)}`)
+      .join(' ')
+  }, [frames])
+
+  const impactPoint = useMemo(() => {
+    const impactFrame = frames?.find((frame) => frame.event === 'impact')
+    if (!impactFrame) return null
+    return {
+      x: (impactFrame.target.x / SHOT_TABLE.width) * 100,
+      y: (impactFrame.target.y / SHOT_TABLE.height) * 100,
+    }
+  }, [frames])
+
   return (
     <div className="shot-preview">
       <div className="shot-preview__canvas">
         <div className="shot-preview__felt">
           <div className="shot-preview__lights" />
+          {frames?.length ? (
+            <svg className="shot-preview__sim" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <polyline className="shot-preview__trail shot-preview__trail--cue" points={cueTrail} />
+              <polyline className="shot-preview__trail shot-preview__trail--target" points={targetTrail} />
+              {impactPoint ? (
+                <circle
+                  className="shot-preview__impact"
+                  cx={impactPoint.x}
+                  cy={impactPoint.y}
+                  r={1.3}
+                />
+              ) : null}
+            </svg>
+          ) : null}
           <div className="shot-preview__aim-vector" style={{ transform: `rotate(${aimAngle}deg)` }}>
             <span style={{ height: `${aimLength}%` }} />
           </div>

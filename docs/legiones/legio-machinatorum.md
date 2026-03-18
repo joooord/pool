@@ -44,6 +44,11 @@
   - Inputs: Cohort requisitions, vendor telemetry.
   - Outputs: Budget burndown, unlock approvals, vendor scorecards.
 
+### Acting Assignments (18 Mar 2026)
+- **Architectus:** Jim (OpenClaw) until Praefectus names a human/hybrid successor.
+- **Forge Marshal:** AutoPraefectus (automation orchestrator) reporting directly to Architectus.
+- **Quaestor Machinae:** Ledger agent (AI) synced with Jordan for spend approvals >£20/day.
+
 ### Cohort Command (Agent Templates)
 Each cohort spins up an acting Tribunus + two specialist agents to start. Names are codenames until a human/AI is permanently bound.
 

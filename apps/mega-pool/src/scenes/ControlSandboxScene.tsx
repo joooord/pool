@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AimDial } from '../components/sandbox/AimDial'
 import { PowerSlider } from '../components/sandbox/PowerSlider'
 import { CueBallSpinControl, type SpinVector } from '../components/sandbox/CueBallSpinControl'
@@ -15,6 +15,8 @@ type ShotPresetConfig = {
   spin: SpinVector
   power: number
 }
+
+type CustomPreset = ShotPresetConfig & { id: string }
 
 const SHOT_PRESETS: Record<ShotPreset, ShotPresetConfig> = {
   stun: {
@@ -45,15 +47,56 @@ export function ControlSandboxScene() {
   const [spin, setSpin] = useState<SpinVector>({ x: 0.1, y: 0.2 })
   const [cameraMode, setCameraMode] = useState<CameraMode>('aim')
   const [activePreset, setActivePreset] = useState<ShotPreset>('stun')
+  const [customPresets, setCustomPresets] = useState<CustomPreset[]>([])
   const { frames, isRunning, runSimulation } = useShotSimulation()
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem('mega.custom-presets')
+    if (!stored) return
+    try {
+      const parsed = JSON.parse(stored) as CustomPreset[]
+      setCustomPresets(parsed)
+    } catch (error) {
+      console.warn('Failed to parse presets', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem('mega.custom-presets', JSON.stringify(customPresets))
+  }, [customPresets])
+
   const impactFrame = frames.find((frame) => frame.event === 'impact')
+
+  const applyPresetConfig = (config: ShotPresetConfig) => {
+    setSpin(config.spin)
+    setPower(config.power)
+  }
 
   const handlePresetChange = (preset: ShotPreset) => {
     setActivePreset(preset)
     const config = SHOT_PRESETS[preset]
-    setSpin(config.spin)
-    setPower(config.power)
+    applyPresetConfig(config)
+  }
+
+  const handleCustomSelect = (preset: CustomPreset) => {
+    setActivePreset('stun')
+    applyPresetConfig(preset)
+  }
+
+  const handleCustomSave = () => {
+    const id = `custom-${Date.now()}`
+    const title = `Custom ${customPresets.length + 1}`
+    const subtitle = `${Math.round(power * 100)}% • spin ${spin.x.toFixed(2)},${spin.y.toFixed(2)}`
+    const next: CustomPreset = {
+      id,
+      title,
+      subtitle,
+      spin,
+      power,
+    }
+    setCustomPresets((prev) => [...prev, next])
   }
 
   const handleSimulate = () => {
@@ -86,6 +129,7 @@ export function ControlSandboxScene() {
             spin={spin}
             cameraMode={cameraMode}
             shotLabel={SHOT_PRESETS[activePreset].title}
+            frames={frames}
           />
         </div>
 
@@ -135,9 +179,14 @@ export function ControlSandboxScene() {
       </section>
 
       <section className="control-sandbox__presets">
-        <div>
-          <p className="control-sandbox__eyebrow">Shot presets</p>
-          <p className="control-sandbox__helper">Switch between rehearsal patterns. Tweaks stay local.</p>
+        <div className="control-sandbox__presets-header">
+          <div>
+            <p className="control-sandbox__eyebrow">Shot presets</p>
+            <p className="control-sandbox__helper">Switch between rehearsal patterns. Tweaks stay local.</p>
+          </div>
+          <button type="button" className="preset-save" onClick={handleCustomSave}>
+            Save current
+          </button>
         </div>
         <div className="control-sandbox__preset-buttons">
           {Object.entries(SHOT_PRESETS).map(([key, config]) => (
@@ -152,6 +201,16 @@ export function ControlSandboxScene() {
             </button>
           ))}
         </div>
+        {customPresets.length ? (
+          <div className="control-sandbox__customs">
+            {customPresets.map((preset) => (
+              <button key={preset.id} type="button" className="preset-chip preset-chip--ghost" onClick={() => handleCustomSelect(preset)}>
+                <span>{preset.title}</span>
+                <small>{preset.subtitle}</small>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="control-sandbox__cameras">
