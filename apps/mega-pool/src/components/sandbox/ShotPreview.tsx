@@ -25,6 +25,9 @@ export function ShotPreview({ aimAngle, power, spin, cameraMode, shotLabel }: Sh
     '--offset-y': `${cueOffsetY}px`,
   } as CSSProperties
 
+  const postImpactAngle = aimAngle + spin.x * 20
+  const postImpactLength = 30 + Math.abs(spin.y) * 40
+
   return (
     <div className="shot-preview">
       <div className="shot-preview__canvas">
@@ -32,6 +35,15 @@ export function ShotPreview({ aimAngle, power, spin, cameraMode, shotLabel }: Sh
           <div className="shot-preview__lights" />
           <div className="shot-preview__aim-vector" style={{ transform: `rotate(${aimAngle}deg)` }}>
             <span style={{ height: `${aimLength}%` }} />
+          </div>
+          <div className="shot-preview__path shot-preview__path--cue" style={{ transform: `rotate(${aimAngle}deg)` }}>
+            <span style={{ height: `${aimLength + 10}%` }} />
+          </div>
+          <div className="shot-preview__path shot-preview__path--post" style={{ transform: `rotate(${postImpactAngle}deg)` }}>
+            <span style={{ height: `${postImpactLength}%`, opacity: 0.4 + Math.abs(spin.y) * 0.4 }} />
+          </div>
+          <div className={`shot-preview__camera-rail shot-preview__camera-rail--${cameraMode}`}>
+            <span style={{ width: `${40 + power * 40}%` }} />
           </div>
           <div className="shot-preview__ball shot-preview__ball--cue" style={cueStyle} />
           <div className="shot-preview__ball shot-preview__ball--target" />
