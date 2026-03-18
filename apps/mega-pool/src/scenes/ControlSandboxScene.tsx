@@ -3,6 +3,7 @@ import { AimDial } from '../components/sandbox/AimDial'
 import { PowerSlider } from '../components/sandbox/PowerSlider'
 import { CueBallSpinControl, type SpinVector } from '../components/sandbox/CueBallSpinControl'
 import { ShotPreview } from '../components/sandbox/ShotPreview'
+import { useShotSimulation } from '../hooks/useShotSimulation'
 import './ControlSandboxScene.css'
 
 type CameraMode = 'aim' | 'cinematic' | 'orbit'
@@ -44,12 +45,19 @@ export function ControlSandboxScene() {
   const [spin, setSpin] = useState<SpinVector>({ x: 0.1, y: 0.2 })
   const [cameraMode, setCameraMode] = useState<CameraMode>('aim')
   const [activePreset, setActivePreset] = useState<ShotPreset>('stun')
+  const { frames, isRunning, runSimulation } = useShotSimulation()
+
+  const impactFrame = frames.find((frame) => frame.event === 'impact')
 
   const handlePresetChange = (preset: ShotPreset) => {
     setActivePreset(preset)
     const config = SHOT_PRESETS[preset]
     setSpin(config.spin)
     setPower(config.power)
+  }
+
+  const handleSimulate = () => {
+    runSimulation({ cueAngleDeg: aimAngle, power, spin })
   }
 
   return (
@@ -59,10 +67,15 @@ export function ControlSandboxScene() {
           <p className="control-sandbox__eyebrow">Control Lab</p>
           <h1>Touch sandbox</h1>
         </div>
-        <p className="control-sandbox__summary">
-          Prototype the single-finger shot flow. Adjust aim, pull-back power, and cue-ball contact before wiring it to
-          physics.
-        </p>
+        <div className="control-sandbox__header-actions">
+          <p className="control-sandbox__summary">
+            Prototype the single-finger shot flow. Adjust aim, pull-back power, and cue-ball contact before wiring it to
+            physics.
+          </p>
+          <button className="control-sandbox__simulate" type="button" onClick={handleSimulate} disabled={isRunning}>
+            {isRunning ? 'Simulating…' : 'Simulate shot'}
+          </button>
+        </div>
       </header>
 
       <div className="control-sandbox__grid">
@@ -88,6 +101,38 @@ export function ControlSandboxScene() {
           <PowerSlider value={power} onChange={setPower} />
         </div>
       </div>
+
+      <section className="control-sandbox__telemetry">
+        <div>
+          <p className="control-sandbox__eyebrow">Shot telemetry</p>
+          <p className="control-sandbox__helper">
+            Run the simulation to capture cue/target velocities plus first-contact timing. Values are approximations until
+            the full physics harness lands.
+          </p>
+        </div>
+        <div className="telemetry-grid">
+          <div>
+            <span>Impact time</span>
+            <strong>{impactFrame ? `${(impactFrame.t / 1000).toFixed(2)}s` : '—'}</strong>
+          </div>
+          <div>
+            <span>Cue velocity (max)</span>
+            <strong>
+              {frames.length ? `${(Math.max(...frames.map((f) => f.cueVelocity)) * 100).toFixed(1)} u/s` : '—'}
+            </strong>
+          </div>
+          <div>
+            <span>Target velocity (max)</span>
+            <strong>
+              {frames.length ? `${(Math.max(...frames.map((f) => f.targetVelocity)) * 100).toFixed(1)} u/s` : '—'}
+            </strong>
+          </div>
+          <div>
+            <span>Frames captured</span>
+            <strong>{frames.length || '—'}</strong>
+          </div>
+        </div>
+      </section>
 
       <section className="control-sandbox__presets">
         <div>
