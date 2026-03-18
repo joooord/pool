@@ -1,4 +1,5 @@
 .openclaw/
 logs/
 media/
-mega-pool/
+apps/mega-pool/node_modules/
+apps/mega-pool/dist/
