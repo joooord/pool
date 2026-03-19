@@ -37,13 +37,13 @@ export function TableScene() {
         containerRef.current.appendChild(localApp.canvas)
       }
 
-      // Draw playing surface (Baize)
+      // Baize
       const baize = new PIXI.Graphics()
       baize.rect(40, 40, TABLE_WIDTH - 80, TABLE_HEIGHT - 80)
       baize.fill(0x2a8b3e)
       localApp.stage.addChild(baize)
 
-      // Draw Baulk Line
+      // Baulk Line & D
       const baulkLineX = 40 + (TABLE_WIDTH - 80) * 0.2
       const baulkLine = new PIXI.Graphics()
       baulkLine.moveTo(baulkLineX, 40)
@@ -51,30 +51,75 @@ export function TableScene() {
       baulkLine.stroke({ width: 2, color: 0xffffff, alpha: 0.5 })
       localApp.stage.addChild(baulkLine)
 
-      // Draw "D"
       const dRadius = (TABLE_HEIGHT - 80) / 6
       const dGraphic = new PIXI.Graphics()
       dGraphic.arc(baulkLineX, TABLE_HEIGHT / 2, dRadius, Math.PI / 2, -Math.PI / 2)
       dGraphic.stroke({ width: 2, color: 0xffffff, alpha: 0.5 })
       localApp.stage.addChild(dGraphic)
 
-      // Draw Pockets
+      // Pockets
       const pocketRadius = 15
       const pocketColor = 0x000000
       const pockets = [
-        { x: 40, y: 40 }, 
-        { x: TABLE_WIDTH / 2, y: 35 }, 
-        { x: TABLE_WIDTH - 40, y: 40 }, 
-        { x: 40, y: TABLE_HEIGHT - 40 }, 
-        { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - 35 }, 
-        { x: TABLE_WIDTH - 40, y: TABLE_HEIGHT - 40 }
+        { x: 40, y: 40 }, { x: TABLE_WIDTH / 2, y: 35 }, { x: TABLE_WIDTH - 40, y: 40 },
+        { x: 40, y: TABLE_HEIGHT - 40 }, { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - 35 }, { x: TABLE_WIDTH - 40, y: TABLE_HEIGHT - 40 }
       ]
-
       pockets.forEach(p => {
         const pocket = new PIXI.Graphics()
         pocket.circle(p.x, p.y, pocketRadius)
         pocket.fill(pocketColor)
         localApp.stage.addChild(pocket)
+      })
+
+      // BALLS
+      const ballRadius = 8
+      
+      const drawBall = (x: number, y: number, color: number) => {
+        const b = new PIXI.Graphics()
+        b.circle(x, y, ballRadius)
+        b.fill(color)
+        
+        // Add a small specular highlight for depth
+        b.circle(x - 2, y - 2, 2)
+        b.fill({ color: 0xffffff, alpha: 0.4 })
+        
+        localApp.stage.addChild(b)
+      }
+
+      // Cue Ball
+      drawBall(baulkLineX - 20, TABLE_HEIGHT / 2, 0xffffff) // White
+
+      // Triangle Rack
+      const pyramidSpotX = 40 + (TABLE_WIDTH - 80) * 0.75
+      const startY = TABLE_HEIGHT / 2
+      
+      // Standard English 8-ball WPA rack pattern:
+      // Red(1), Yellow(2), Black(3)
+      // Usually alternating on corners, but let's just make a valid pattern.
+      // R=0xdd2222, Y=0xdddd22, B=0x111111
+      const R = 0xdd2222
+      const Y = 0xdddd22
+      const B = 0x111111
+      
+      const rackPattern = [
+        [R],
+        [Y, R],
+        [R, B, Y],
+        [Y, R, Y, R],
+        [R, Y, R, Y, Y] // Corners are different colors in standard WEPF rack
+      ]
+
+      const ballSpacing = ballRadius * 2 + 1 // 1px gap
+      
+      rackPattern.forEach((row, colIndex) => {
+        const rowX = pyramidSpotX + colIndex * (ballSpacing * 0.866) // sqrt(3)/2
+        const rowHeight = (row.length - 1) * ballSpacing
+        const startYForRow = startY - rowHeight / 2
+
+        row.forEach((color, rowIndex) => {
+          const rowY = startYForRow + rowIndex * ballSpacing
+          drawBall(rowX, rowY, color)
+        })
       })
 
       const resize = () => {
