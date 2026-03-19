@@ -22,7 +22,6 @@ const W = 0xffffff; // White
 export function TableScene() {
   const containerRef = useRef<HTMLDivElement>(null)
   
-  // Zustand State hooks
   const currentPlayer = useGameStore(state => state.currentPlayer);
   const message = useGameStore(state => state.message);
   const p1Color = useGameStore(state => state.player1Color);
@@ -61,13 +60,11 @@ export function TableScene() {
       localApp.stage.eventMode = 'static'
       localApp.stage.hitArea = new PIXI.Rectangle(0, 0, TABLE_WIDTH, TABLE_HEIGHT)
 
-      // Baize
       const baize = new PIXI.Graphics()
       baize.rect(40, 40, TABLE_WIDTH - 80, TABLE_HEIGHT - 80)
       baize.fill(0x2a8b3e)
       localApp.stage.addChild(baize)
 
-      // Aim Line
       const aimLine = new PIXI.Graphics()
       localApp.stage.addChild(aimLine)
 
@@ -108,11 +105,11 @@ export function TableScene() {
       })
 
       let isDragging = false
-      let canShoot = true // Turn logic: can only shoot when balls are stopped
+      let canShoot = true 
       let currentTurnPots: number[] = []
 
       localApp.stage.on('pointerdown', () => {
-        if (canShoot) isDragging = true
+        if (canShoot && useGameStore.getState().currentPlayer === 1) isDragging = true
       })
 
       localApp.stage.on('pointermove', (e) => {
@@ -137,7 +134,6 @@ export function TableScene() {
         const dx = cueBall.x - e.global.x
         const dy = cueBall.y - e.global.y
         
-        // Power cap
         let power = Math.sqrt(dx*dx + dy*dy) * 0.05
         if (power > 15) power = 15
         
@@ -154,6 +150,45 @@ export function TableScene() {
         { x: 40, y: TABLE_HEIGHT - 40 }, { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - 35 }, { x: TABLE_WIDTH - 40, y: TABLE_HEIGHT - 40 }
       ]
       const pocketRadius = 15
+
+      const triggerAI = () => {
+        setTimeout(() => {
+          const cueBall = balls.find(b => b.isCue)
+          if (!cueBall) return;
+          
+          const state = useGameStore.getState();
+          const aiColorStr = state.player2Color;
+          
+          let targetColor = -1;
+          if (aiColorStr === 'red') targetColor = R;
+          else if (aiColorStr === 'yellow') targetColor = Y;
+          
+          let targets = balls.filter(b => !b.isCue && b.color !== B);
+          if (targetColor !== -1) {
+            targets = balls.filter(b => b.color === targetColor);
+            if (targets.length === 0) targets = balls.filter(b => b.color === B);
+          }
+          
+          if (targets.length === 0) targets = balls.filter(b => !b.isCue);
+
+          const target = targets[Math.floor(Math.random() * targets.length)];
+          if (!target) return;
+
+          const dx = target.x - cueBall.x;
+          const dy = target.y - cueBall.y;
+          const angle = Math.atan2(dy, dx);
+          
+          // Slight randomness to AI aim
+          const finalAngle = angle + (Math.random() * 0.2 - 0.1);
+          const power = 8 + Math.random() * 4;
+
+          cueBall.vx = Math.cos(finalAngle) * power;
+          cueBall.vy = Math.sin(finalAngle) * power;
+          
+          canShoot = false;
+          currentTurnPots = [];
+        }, 1500);
+      };
 
       localApp.ticker.add(() => {
         let anyMoving = false
@@ -173,7 +208,6 @@ export function TableScene() {
           if (Math.abs(b.vx) < 0.05) b.vx = 0
           if (Math.abs(b.vy) < 0.05) b.vy = 0
 
-          // Pocket detection
           let pocketed = false
           for (const p of pockets) {
             const pdx = b.x - p.x
@@ -199,13 +233,11 @@ export function TableScene() {
             }
           }
 
-          // Cushions
           if (b.x < 40 + b.radius) { b.x = 40 + b.radius; b.vx *= -1 }
           if (b.x > TABLE_WIDTH - 40 - b.radius) { b.x = TABLE_WIDTH - 40 - b.radius; b.vx *= -1 }
           if (b.y < 40 + b.radius) { b.y = 40 + b.radius; b.vy *= -1 }
           if (b.y > TABLE_HEIGHT - 40 - b.radius) { b.y = TABLE_HEIGHT - 40 - b.radius; b.vy *= -1 }
 
-          // Collisions
           for (let j = i - 1; j >= 0; j--) {
             const b2 = balls[j]
             const dx = b2.x - b.x
@@ -235,9 +267,8 @@ export function TableScene() {
         }
 
         if (!anyMoving && !canShoot) {
-          canShoot = true // Turn ended
+          canShoot = true 
           
-          // Evaluate Logic
           const isFoul = currentTurnPots.includes(W);
           const state = useGameStore.getState();
           
@@ -256,7 +287,6 @@ export function TableScene() {
             const pColor = state.currentPlayer === 1 ? state.player1Color : state.player2Color;
 
             if (pColor === null && (pottedRed || pottedYellow)) {
-              // Open table, assign color based on first pot
               if (pottedRed && !pottedYellow) {
                  state.assignColors('red', state.currentPlayer);
                  validPot = true;
@@ -264,15 +294,18 @@ export function TableScene() {
                  state.assignColors('yellow', state.currentPlayer);
                  validPot = true;
               } else {
-                 validPot = true; // Potted both, weird scenario but counts as valid for now.
+                 validPot = true; 
               }
             } else if (pColor !== null) {
               if (pColor === 'red' && pottedRed) validPot = true;
               if (pColor === 'yellow' && pottedYellow) validPot = true;
             }
             
-            // Technically in standard rules potting opponent's ball is a foul, but let's just do turn end for now.
             state.endTurn(validPot);
+          }
+          
+          if (useGameStore.getState().currentPlayer === 2) {
+             triggerAI();
           }
         }
       })
@@ -307,8 +340,6 @@ export function TableScene() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-      
-      {/* HUD Layer */}
       <div style={{ padding: '16px', backgroundColor: '#111', color: '#fff', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '1.2rem' }}>{message}</h2>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', fontSize: '0.9rem', opacity: 0.8 }}>
@@ -318,13 +349,12 @@ export function TableScene() {
             </span>
           </div>
           <div>
-            <span style={{ fontWeight: currentPlayer === 2 ? 'bold' : 'normal', color: currentPlayer === 2 ? '#00ffcc' : '#fff' }}>
-              P2 Color: {p2Color || 'Open'}
+            <span style={{ fontWeight: currentPlayer === 2 ? 'bold' : 'normal', color: currentPlayer === 2 ? '#ff003c' : '#fff' }}>
+              CPU Color: {p2Color || 'Open'}
             </span>
           </div>
         </div>
       </div>
-
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#000' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} />
       </div>
