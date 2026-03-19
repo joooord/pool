@@ -1,50 +1,39 @@
-# Mega – Mobile-First English Pool
+# English Pool
+A seamless, mobile-first English 8-Ball Pool simulator built for the browser.
 
-A high-polish, single-player English pool experience built for the browser but designed mobile-first. Mega focuses on cinematic camera work, tactile controls, and accurate Blackball/UK 8-ball rules.
+Play live: [https://pool-ochre.vercel.app](https://pool-ochre.vercel.app)
 
-## Vision
-- **Touch-first controls** with one-hand cueing, precision wheel, and cue-ball contact targeting.
-- **Adaptive camera system** inspired by Apple Arcade sports titles (shot previews, follow cams, highlight replays).
-- **Accurate physics + rules** tuned specifically for English pool (reds/yellows, two-shot carry options, black-ball fouls).
-- **Replayable modes**: free practice, AI match play, and “Mega Moments” scenario ladder.
+## Features
+- **Responsive & Mobile-First:** Runs smooth on phones with proper touch controls and `navigator.vibrate` haptics.
+- **Physics Engine:** Custom 2D rigid body collision logic built entirely in math without external physics libraries, ensuring lightweight performance.
+- **English 8-Ball Rules:** Real state-machine based rules powered by Zustand. Correct foul logic (e.g. potting the white ball causes an "In-off"), turn carrying, table open/closed state, and black ball win/loss conditions.
+- **AI Opponent:** Single-player mode against a CPU that automatically evaluates the table state, targets its assigned colors, and calculates trajectory.
+- **Spin Controls:** Apply english (spin) via a visual touch controller to alter bounce angles off cushions.
+- **Procedural Audio:** Ball clacks generated dynamically with Web Audio API based on impact velocity.
 
-## Tech Stack
-| Layer | Choice |
-| --- | --- |
-| Build tooling | Vite + TypeScript + SWC React plugin |
-| UI framework | React 18 + Zustand for state, Framer Motion for gestures/animation |
-| Rendering | PixiJS (WebGL-first, Canvas fallback) + custom physics/shot solver |
-| Input | `@use-gesture/react` for drag/gesture orchestration, pointer events fallback |
-| Audio | Placeholder (Howler planned) |
+## Stack
+- React 18
+- Vite
+- TypeScript
+- Pixi.js (v8)
+- Zustand
 
-## Directory Layout
-```
-mega-pool/
-├── public/              # Static assets, app icon, PWA manifest (later)
-├── src/
-│   ├── app/             # Route shell, layout, providers
-│   ├── components/      # Reusable UI pieces (HUD, controls, overlays)
-│   ├── core/            # Physics engine, rules logic, camera state machine
-│   ├── scenes/          # Gameplay screens (Home, Table, Challenges)
-│   ├── styles/          # Global styles, tokens
-│   └── main.tsx         # Entry point
-├── package.json
-└── README.md
-```
-
-## Getting Started
+## Local Development
 ```bash
+# Clone the repository
+git clone https://github.com/joooord/pool.git
+
+# Install dependencies
 npm install
-npm run dev    # Starts Vite dev server (defaults to http://localhost:5173)
+
+# Start the dev server
+npm run dev
 ```
 
-Additional scripts will be added as the engine + tooling land (tests, lint, build preview, etc.).
+## Build
+```bash
+npm run build
+```
 
-## Roadmap
-1. **Interaction prototypes** – Implement control sandbox + camera transitions on mobile viewport.
-2. **Physics kernel** – Deterministic ball simulation, cushion response, pocket detection.
-3. **Rules/turn manager** – English 8-ball logic, foul handling, scoring, tutorial overlays.
-4. **AI + scenarios** – Adaptive opponent + “Mega Moments” challenge data.
-5. **Polish + deploy** – Audio, haptics, install prompt, Hostinger deployment pipeline.
-
-Feedback + feature requests welcome via issues in this repo.
+## License
+MIT

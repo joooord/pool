@@ -3,11 +3,77 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mega-pool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>English Pool</title>
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="English Pool" />
+    <meta name="description" content="A mobile-first English 8-Ball Pool simulator built with React and PixiJS. Play a seamless, physics-based game right in your browser." />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://pool-ochre.vercel.app/" />
+    <meta property="og:title" content="English Pool" />
+    <meta property="og:description" content="A mobile-first English 8-Ball Pool simulator built with React and PixiJS. Play a seamless, physics-based game right in your browser." />
+    <meta property="og:image" content="https://pool-ochre.vercel.app/og-image.jpg" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://pool-ochre.vercel.app/" />
+    <meta property="twitter:title" content="English Pool" />
+    <meta property="twitter:description" content="A mobile-first English 8-Ball Pool simulator built with React and PixiJS. Play a seamless, physics-based game right in your browser." />
+    <meta property="twitter:image" content="https://pool-ochre.vercel.app/og-image.jpg" />
+    
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000;
+      }
+      #loader {
+        position: fixed;
+        inset: 0;
+        background: #0a0a0a;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-family: system-ui, -apple-system, sans-serif;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #00ffcc;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
+    <div id="loader">
+      <div class="spinner"></div>
+      <h2 style="margin:0; font-weight: 500; letter-spacing: 2px; text-transform: uppercase;">English Pool</h2>
+      <p style="opacity: 0.5; font-size: 0.8rem; margin-top: 8px;">Loading resources...</p>
+    </div>
     <div id="root"></div>
+    <script>
+      // Simple loader removal after React mounts
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const loader = document.getElementById('loader');
+          if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 500);
+          }
+        }, 800);
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

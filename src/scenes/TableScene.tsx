@@ -461,7 +461,7 @@ export function TableScene() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', position: 'relative' }}>
-      <div style={{ padding: '16px', backgroundColor: '#111', color: '#fff', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 10 }}>
+      <div style={{ padding: '16px', backgroundColor: '#111', color: '#fff', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 10, position: 'relative' }}>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', transition: 'color 0.3s' }}>{message}</h2>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', fontSize: '0.9rem', opacity: 0.8 }}>
           <div>
@@ -475,6 +475,40 @@ export function TableScene() {
             </span>
           </div>
         </div>
+        
+        <button 
+          onClick={() => {
+            if (navigator.share) {
+              navigator.share({
+                title: 'English Pool',
+                text: 'Play English Pool with me right in your browser!',
+                url: 'https://pool-ochre.vercel.app/'
+              })
+            } else {
+              navigator.clipboard.writeText('https://pool-ochre.vercel.app/');
+              alert('Link copied to clipboard!');
+            }
+          }}
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            background: 'none',
+            border: 'none',
+            color: '#fff',
+            cursor: 'pointer',
+            opacity: 0.7
+          }}
+          aria-label="Share Game"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+        </button>
       </div>
       
       {/* Spin Control UI - Mobile Friendly */}
