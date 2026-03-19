@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as PIXI from 'pixi.js'
 import { useGameStore } from '../store/gameStore'
 
@@ -12,6 +12,8 @@ interface Ball {
   color: number;
   isCue?: boolean;
   graphics: PIXI.Graphics;
+  spinX: number;
+  spinY: number;
 }
 
 const R = 0xdd2222; 
@@ -46,12 +48,17 @@ const playClack = (velocity: number) => {
 
 export function TableScene() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [spin, setSpin] = useState({ x: 0, y: 0 })
   
   const currentPlayer = useGameStore(state => state.currentPlayer);
   const message = useGameStore(state => state.message);
   const p1Color = useGameStore(state => state.player1Color);
   const p2Color = useGameStore(state => state.player2Color);
   const gameStatus = useGameStore(state => state.status);
+
+  // Spin ref for the Pixi loop to read without stale closure
+  const spinRef = useRef(spin)
+  useEffect(() => { spinRef.current = spin }, [spin])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -111,7 +118,7 @@ export function TableScene() {
         graphics.y = y
         localApp.stage.addChild(graphics)
 
-        balls.push({ id: nextId++, x, y, vx: 0, vy: 0, radius: ballRadius, color, isCue, graphics })
+        balls.push({ id: nextId++, x, y, vx: 0, vy: 0, radius: ballRadius, color, isCue, graphics, spinX: 0, spinY: 0 })
       }
 
       const baulkLineX = 40 + (TABLE_WIDTH - 80) * 0.2
@@ -156,9 +163,13 @@ export function TableScene() {
         const angle = Math.atan2(dy, dx)
         const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 300)
 
+        // Calculate spin deflection for aim line visual
+        const deflection = spinRef.current.x * 0.05
+        const deflectedAngle = angle + deflection
+
         aimLine.clear()
         aimLine.moveTo(cueBall.x, cueBall.y)
-        aimLine.lineTo(cueBall.x + Math.cos(angle) * 500, cueBall.y + Math.sin(angle) * 500)
+        aimLine.lineTo(cueBall.x + Math.cos(deflectedAngle) * 500, cueBall.y + Math.sin(deflectedAngle) * 500)
         aimLine.stroke({ width: 1, color: 0xffffff, alpha: 0.3 })
 
         cueStick.clear()
@@ -187,11 +198,21 @@ export function TableScene() {
         let power = Math.sqrt(dx*dx + dy*dy) * 0.05
         if (power > 15) power = 15
         
-        if (power > 0.5) playClack(power * 2); 
+        if (power > 0.5) {
+          playClack(power * 2); 
+          if (navigator.vibrate) navigator.vibrate(15); // Haptics for hitting the ball
+        }
         
         const angle = Math.atan2(dy, dx)
-        cueBall.vx = Math.cos(angle) * power
-        cueBall.vy = Math.sin(angle) * power
+        const deflection = spinRef.current.x * 0.05
+        const finalAngle = angle + deflection
+
+        cueBall.vx = Math.cos(finalAngle) * power
+        cueBall.vy = Math.sin(finalAngle) * power
+        
+        // Add physical spin momentum (used when hitting cushions)
+        cueBall.spinX = spinRef.current.x * power * 0.1
+        cueBall.spinY = spinRef.current.y * power * 0.1
         
         canShoot = false
         currentTurnPots = []
@@ -259,6 +280,10 @@ export function TableScene() {
           b.y += b.vy
           b.vx *= 0.985
           b.vy *= 0.985
+          
+          // Degrade spin over time
+          b.spinX *= 0.98
+          b.spinY *= 0.98
 
           if (Math.abs(b.vx) < 0.05) b.vx = 0
           if (Math.abs(b.vy) < 0.05) b.vy = 0
@@ -279,6 +304,8 @@ export function TableScene() {
               b.y = cueStartY
               b.vx = 0
               b.vy = 0
+              b.spinX = 0
+              b.spinY = 0
               currentTurnPots.push(W)
             } else {
               b.graphics.destroy()
@@ -290,12 +317,17 @@ export function TableScene() {
 
           let bounced = false;
           let impactVel = 0;
-          if (b.x < 40 + b.radius) { b.x = 40 + b.radius; b.vx *= -1; bounced = true; impactVel = Math.abs(b.vx); }
-          if (b.x > TABLE_WIDTH - 40 - b.radius) { b.x = TABLE_WIDTH - 40 - b.radius; b.vx *= -1; bounced = true; impactVel = Math.abs(b.vx); }
-          if (b.y < 40 + b.radius) { b.y = 40 + b.radius; b.vy *= -1; bounced = true; impactVel = Math.abs(b.vy); }
-          if (b.y > TABLE_HEIGHT - 40 - b.radius) { b.y = TABLE_HEIGHT - 40 - b.radius; b.vy *= -1; bounced = true; impactVel = Math.abs(b.vy); }
           
-          if (bounced) playClack(impactVel);
+          // Simple english/spin logic when hitting a cushion
+          if (b.x < 40 + b.radius) { b.x = 40 + b.radius; b.vx *= -1; b.vy += b.spinY; bounced = true; impactVel = Math.abs(b.vx); }
+          if (b.x > TABLE_WIDTH - 40 - b.radius) { b.x = TABLE_WIDTH - 40 - b.radius; b.vx *= -1; b.vy += b.spinY; bounced = true; impactVel = Math.abs(b.vx); }
+          if (b.y < 40 + b.radius) { b.y = 40 + b.radius; b.vy *= -1; b.vx += b.spinX; bounced = true; impactVel = Math.abs(b.vy); }
+          if (b.y > TABLE_HEIGHT - 40 - b.radius) { b.y = TABLE_HEIGHT - 40 - b.radius; b.vy *= -1; b.vx += b.spinX; bounced = true; impactVel = Math.abs(b.vy); }
+          
+          if (bounced) {
+            playClack(impactVel);
+            if (b.isCue && navigator.vibrate) navigator.vibrate(5); // Mini haptic tick on cushion hit
+          }
 
           for (let j = i - 1; j >= 0; j--) {
             const b2 = balls[j]
@@ -398,7 +430,11 @@ export function TableScene() {
         const padding = 32
         const availableWidth = parent.clientWidth - padding
         const availableHeight = parent.clientHeight - padding
-        const scale = Math.min(availableWidth / TABLE_WIDTH, availableHeight / TABLE_HEIGHT)
+        
+        // Ensure a bit more padding on mobile so it's not edge-to-edge making aiming hard
+        const mobilePad = window.innerWidth < 600 ? 64 : padding
+        const scale = Math.min((availableWidth - mobilePad) / TABLE_WIDTH, (availableHeight - mobilePad) / TABLE_HEIGHT)
+        
         if (localApp.canvas) {
           localApp.canvas.style.width = `${TABLE_WIDTH * scale}px`
           localApp.canvas.style.height = `${TABLE_HEIGHT * scale}px`
@@ -441,8 +477,57 @@ export function TableScene() {
         </div>
       </div>
       
+      {/* Spin Control UI - Mobile Friendly */}
+      {currentPlayer === 1 && gameStatus === 'playing' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '24px',
+          right: '24px',
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          backgroundColor: '#fff',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          zIndex: 15,
+          cursor: 'pointer',
+          border: '2px solid #ccc',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+        onPointerDown={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          const x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+          const y = ((e.clientY - rect.top) / rect.height) * 2 - 1
+          // Clamp within circle
+          if (x*x + y*y <= 1.2) setSpin({ x, y })
+        }}
+        onPointerMove={(e) => {
+          if (e.buttons !== 1) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          const x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+          const y = ((e.clientY - rect.top) / rect.height) * 2 - 1
+          if (x*x + y*y <= 1) setSpin({ x, y })
+        }}
+        >
+          {/* Crosshair */}
+          <div style={{ position: 'absolute', width: '100%', height: '1px', backgroundColor: '#eee' }} />
+          <div style={{ position: 'absolute', height: '100%', width: '1px', backgroundColor: '#eee' }} />
+          
+          {/* Spin Indicator Dot */}
+          <div style={{
+            position: 'absolute',
+            width: '12px',
+            height: '12px',
+            backgroundColor: '#f00',
+            borderRadius: '50%',
+            transform: `translate(${spin.x * 34}px, ${spin.y * 34}px)`
+          }} />
+        </div>
+      )}
+
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#000', cursor: 'crosshair', position: 'relative' }}>
-        <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} />
+        <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', touchAction: 'none' }} />
         
         {gameStatus !== 'playing' && (
           <div style={{
