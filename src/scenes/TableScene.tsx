@@ -1,6 +1,18 @@
 import { useEffect, useRef } from 'react'
 import * as PIXI from 'pixi.js'
 
+interface Ball {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  color: number;
+  isCue?: boolean;
+  graphics: PIXI.Graphics;
+}
+
 export function TableScene() {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -32,10 +44,11 @@ export function TableScene() {
       }
 
       app = localApp
+      if (containerRef.current) containerRef.current.appendChild(localApp.canvas)
 
-      if (containerRef.current) {
-        containerRef.current.appendChild(localApp.canvas)
-      }
+      // Interactive stage for aiming
+      localApp.stage.eventMode = 'static'
+      localApp.stage.hitArea = new PIXI.Rectangle(0, 0, TABLE_WIDTH, TABLE_HEIGHT)
 
       // Baize
       const baize = new PIXI.Graphics()
@@ -43,97 +56,133 @@ export function TableScene() {
       baize.fill(0x2a8b3e)
       localApp.stage.addChild(baize)
 
-      // Baulk Line & D
-      const baulkLineX = 40 + (TABLE_WIDTH - 80) * 0.2
-      const baulkLine = new PIXI.Graphics()
-      baulkLine.moveTo(baulkLineX, 40)
-      baulkLine.lineTo(baulkLineX, TABLE_HEIGHT - 40)
-      baulkLine.stroke({ width: 2, color: 0xffffff, alpha: 0.5 })
-      localApp.stage.addChild(baulkLine)
+      // Aim Line
+      const aimLine = new PIXI.Graphics()
+      localApp.stage.addChild(aimLine)
 
-      const dRadius = (TABLE_HEIGHT - 80) / 6
-      const dGraphic = new PIXI.Graphics()
-      dGraphic.arc(baulkLineX, TABLE_HEIGHT / 2, dRadius, Math.PI / 2, -Math.PI / 2)
-      dGraphic.stroke({ width: 2, color: 0xffffff, alpha: 0.5 })
-      localApp.stage.addChild(dGraphic)
-
-      // Pockets
-      const pocketRadius = 15
-      const pocketColor = 0x000000
-      const pockets = [
-        { x: 40, y: 40 }, { x: TABLE_WIDTH / 2, y: 35 }, { x: TABLE_WIDTH - 40, y: 40 },
-        { x: 40, y: TABLE_HEIGHT - 40 }, { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - 35 }, { x: TABLE_WIDTH - 40, y: TABLE_HEIGHT - 40 }
-      ]
-      pockets.forEach(p => {
-        const pocket = new PIXI.Graphics()
-        pocket.circle(p.x, p.y, pocketRadius)
-        pocket.fill(pocketColor)
-        localApp.stage.addChild(pocket)
-      })
-
-      // BALLS
+      // Balls Setup
+      const balls: Ball[] = []
       const ballRadius = 8
-      
-      const drawBall = (x: number, y: number, color: number) => {
-        const b = new PIXI.Graphics()
-        b.circle(x, y, ballRadius)
-        b.fill(color)
-        
-        // Add a small specular highlight for depth
-        b.circle(x - 2, y - 2, 2)
-        b.fill({ color: 0xffffff, alpha: 0.4 })
-        
-        localApp.stage.addChild(b)
+      let nextId = 0
+
+      const createBall = (x: number, y: number, color: number, isCue = false) => {
+        const graphics = new PIXI.Graphics()
+        graphics.circle(0, 0, ballRadius)
+        graphics.fill(color)
+        graphics.circle(-2, -2, 2)
+        graphics.fill({ color: 0xffffff, alpha: 0.4 })
+        graphics.x = x
+        graphics.y = y
+        localApp.stage.addChild(graphics)
+
+        balls.push({ id: nextId++, x, y, vx: 0, vy: 0, radius: ballRadius, color, isCue, graphics })
       }
 
-      // Cue Ball
-      drawBall(baulkLineX - 20, TABLE_HEIGHT / 2, 0xffffff) // White
+      const baulkLineX = 40 + (TABLE_WIDTH - 80) * 0.2
+      createBall(baulkLineX - 20, TABLE_HEIGHT / 2, 0xffffff, true) // Cue
 
-      // Triangle Rack
+      const R = 0xdd2222, Y = 0xdddd22, B = 0x111111
+      const rackPattern = [[R], [Y, R], [R, B, Y], [Y, R, Y, R], [R, Y, R, Y, Y]]
       const pyramidSpotX = 40 + (TABLE_WIDTH - 80) * 0.75
       const startY = TABLE_HEIGHT / 2
-      
-      // Standard English 8-ball WPA rack pattern:
-      // Red(1), Yellow(2), Black(3)
-      // Usually alternating on corners, but let's just make a valid pattern.
-      // R=0xdd2222, Y=0xdddd22, B=0x111111
-      const R = 0xdd2222
-      const Y = 0xdddd22
-      const B = 0x111111
-      
-      const rackPattern = [
-        [R],
-        [Y, R],
-        [R, B, Y],
-        [Y, R, Y, R],
-        [R, Y, R, Y, Y] // Corners are different colors in standard WEPF rack
-      ]
+      const ballSpacing = ballRadius * 2 + 1
 
-      const ballSpacing = ballRadius * 2 + 1 // 1px gap
-      
       rackPattern.forEach((row, colIndex) => {
-        const rowX = pyramidSpotX + colIndex * (ballSpacing * 0.866) // sqrt(3)/2
+        const rowX = pyramidSpotX + colIndex * (ballSpacing * 0.866)
         const rowHeight = (row.length - 1) * ballSpacing
         const startYForRow = startY - rowHeight / 2
-
         row.forEach((color, rowIndex) => {
-          const rowY = startYForRow + rowIndex * ballSpacing
-          drawBall(rowX, rowY, color)
+          createBall(rowX, startYForRow + rowIndex * ballSpacing, color)
         })
       })
 
+      let isDragging = false
+
+      localApp.stage.on('pointerdown', () => {
+        isDragging = true
+      })
+
+      localApp.stage.on('pointermove', (e) => {
+        if (!isDragging) return
+        const cueBall = balls.find(b => b.isCue)
+        if (!cueBall) return
+
+        aimLine.clear()
+        aimLine.moveTo(cueBall.x, cueBall.y)
+        aimLine.lineTo(e.global.x, e.global.y)
+        aimLine.stroke({ width: 2, color: 0xffffff, alpha: 0.5 })
+      })
+
+      localApp.stage.on('pointerup', (e) => {
+        if (!isDragging) return
+        isDragging = false
+        aimLine.clear()
+
+        const cueBall = balls.find(b => b.isCue)
+        if (!cueBall) return
+
+        const dx = cueBall.x - e.global.x
+        const dy = cueBall.y - e.global.y
+        
+        cueBall.vx = dx * 0.1
+        cueBall.vy = dy * 0.1
+      })
+
+      localApp.ticker.add(() => {
+        for (let i = 0; i < balls.length; i++) {
+          const b = balls[i]
+          b.x += b.vx
+          b.y += b.vy
+          b.vx *= 0.985
+          b.vy *= 0.985
+
+          if (Math.abs(b.vx) < 0.05) b.vx = 0
+          if (Math.abs(b.vy) < 0.05) b.vy = 0
+
+          // Cushions
+          if (b.x < 40 + b.radius) { b.x = 40 + b.radius; b.vx *= -1 }
+          if (b.x > TABLE_WIDTH - 40 - b.radius) { b.x = TABLE_WIDTH - 40 - b.radius; b.vx *= -1 }
+          if (b.y < 40 + b.radius) { b.y = 40 + b.radius; b.vy *= -1 }
+          if (b.y > TABLE_HEIGHT - 40 - b.radius) { b.y = TABLE_HEIGHT - 40 - b.radius; b.vy *= -1 }
+
+          for (let j = i + 1; j < balls.length; j++) {
+            const b2 = balls[j]
+            const dx = b2.x - b.x
+            const dy = b2.y - b.y
+            const dist = Math.sqrt(dx*dx + dy*dy)
+            const minDist = b.radius + b2.radius
+
+            if (dist < minDist) {
+              const overlap = minDist - dist
+              const nx = dx / dist, ny = dy / dist
+              b.x -= nx * overlap / 2
+              b.y -= ny * overlap / 2
+              b2.x += nx * overlap / 2
+              b2.y += ny * overlap / 2
+
+              const kx = b.vx - b2.vx, ky = b.vy - b2.vy
+              const p = nx * kx + ny * ky
+              b.vx -= p * nx
+              b.vy -= p * ny
+              b2.vx += p * nx
+              b2.vy += p * ny
+            }
+          }
+
+          b.graphics.x = b.x
+          b.graphics.y = b.y
+        }
+      })
+
       const resize = () => {
-        if (!containerRef.current) return
+        if (!containerRef.current || !localApp) return
         const parent = containerRef.current.parentElement
         if (!parent) return
-
         const padding = 32
         const availableWidth = parent.clientWidth - padding
         const availableHeight = parent.clientHeight - padding
-        
         const scale = Math.min(availableWidth / TABLE_WIDTH, availableHeight / TABLE_HEIGHT)
-
-        if (localApp && localApp.canvas) {
+        if (localApp.canvas) {
           localApp.canvas.style.width = `${TABLE_WIDTH * scale}px`
           localApp.canvas.style.height = `${TABLE_HEIGHT * scale}px`
         }
@@ -157,13 +206,7 @@ export function TableScene() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
       <h2 style={{ margin: '0 0 16px 0', opacity: 0.8 }}>Table Preview</h2>
       <div 
-        style={{ 
-          flex: 1, 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          overflow: 'hidden'
-        }} 
+        style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }} 
       >
         <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} />
       </div>
