@@ -46,7 +46,6 @@ export function TableScene() {
       app = localApp
       if (containerRef.current) containerRef.current.appendChild(localApp.canvas)
 
-      // Interactive stage for aiming
       localApp.stage.eventMode = 'static'
       localApp.stage.hitArea = new PIXI.Rectangle(0, 0, TABLE_WIDTH, TABLE_HEIGHT)
 
@@ -60,7 +59,6 @@ export function TableScene() {
       const aimLine = new PIXI.Graphics()
       localApp.stage.addChild(aimLine)
 
-      // Balls Setup
       const balls: Ball[] = []
       const ballRadius = 8
       let nextId = 0
@@ -79,7 +77,9 @@ export function TableScene() {
       }
 
       const baulkLineX = 40 + (TABLE_WIDTH - 80) * 0.2
-      createBall(baulkLineX - 20, TABLE_HEIGHT / 2, 0xffffff, true) // Cue
+      const cueStartX = baulkLineX - 20
+      const cueStartY = TABLE_HEIGHT / 2
+      createBall(cueStartX, cueStartY, 0xffffff, true)
 
       const R = 0xdd2222, Y = 0xdddd22, B = 0x111111
       const rackPattern = [[R], [Y, R], [R, B, Y], [Y, R, Y, R], [R, Y, R, Y, Y]]
@@ -97,9 +97,10 @@ export function TableScene() {
       })
 
       let isDragging = false
+      let canShoot = true // Turn logic: can only shoot when balls are stopped
 
       localApp.stage.on('pointerdown', () => {
-        isDragging = true
+        if (canShoot) isDragging = true
       })
 
       localApp.stage.on('pointermove', (e) => {
@@ -124,13 +125,32 @@ export function TableScene() {
         const dx = cueBall.x - e.global.x
         const dy = cueBall.y - e.global.y
         
-        cueBall.vx = dx * 0.1
-        cueBall.vy = dy * 0.1
+        // Power cap
+        let power = Math.sqrt(dx*dx + dy*dy) * 0.05
+        if (power > 15) power = 15
+        
+        const angle = Math.atan2(dy, dx)
+        cueBall.vx = Math.cos(angle) * power
+        cueBall.vy = Math.sin(angle) * power
+        canShoot = false
       })
 
+      const pockets = [
+        { x: 40, y: 40 }, { x: TABLE_WIDTH / 2, y: 35 }, { x: TABLE_WIDTH - 40, y: 40 },
+        { x: 40, y: TABLE_HEIGHT - 40 }, { x: TABLE_WIDTH / 2, y: TABLE_HEIGHT - 35 }, { x: TABLE_WIDTH - 40, y: TABLE_HEIGHT - 40 }
+      ]
+      const pocketRadius = 15
+
       localApp.ticker.add(() => {
-        for (let i = 0; i < balls.length; i++) {
+        let anyMoving = false
+
+        for (let i = balls.length - 1; i >= 0; i--) {
           const b = balls[i]
+          
+          if (Math.abs(b.vx) > 0.05 || Math.abs(b.vy) > 0.05) {
+            anyMoving = true
+          }
+
           b.x += b.vx
           b.y += b.vy
           b.vx *= 0.985
@@ -139,13 +159,38 @@ export function TableScene() {
           if (Math.abs(b.vx) < 0.05) b.vx = 0
           if (Math.abs(b.vy) < 0.05) b.vy = 0
 
+          // Pocket detection
+          let pocketed = false
+          for (const p of pockets) {
+            const pdx = b.x - p.x
+            const pdy = b.y - p.y
+            if (Math.sqrt(pdx*pdx + pdy*pdy) < pocketRadius) {
+              pocketed = true
+              break
+            }
+          }
+
+          if (pocketed) {
+            if (b.isCue) {
+              b.x = cueStartX
+              b.y = cueStartY
+              b.vx = 0
+              b.vy = 0
+            } else {
+              b.graphics.destroy()
+              balls.splice(i, 1)
+              continue
+            }
+          }
+
           // Cushions
           if (b.x < 40 + b.radius) { b.x = 40 + b.radius; b.vx *= -1 }
           if (b.x > TABLE_WIDTH - 40 - b.radius) { b.x = TABLE_WIDTH - 40 - b.radius; b.vx *= -1 }
           if (b.y < 40 + b.radius) { b.y = 40 + b.radius; b.vy *= -1 }
           if (b.y > TABLE_HEIGHT - 40 - b.radius) { b.y = TABLE_HEIGHT - 40 - b.radius; b.vy *= -1 }
 
-          for (let j = i + 1; j < balls.length; j++) {
+          // Collisions
+          for (let j = i - 1; j >= 0; j--) {
             const b2 = balls[j]
             const dx = b2.x - b.x
             const dy = b2.y - b.y
@@ -171,6 +216,10 @@ export function TableScene() {
 
           b.graphics.x = b.x
           b.graphics.y = b.y
+        }
+
+        if (!anyMoving && !canShoot) {
+          canShoot = true // Turn ended
         }
       })
 
@@ -205,9 +254,7 @@ export function TableScene() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
       <h2 style={{ margin: '0 0 16px 0', opacity: 0.8 }}>Table Preview</h2>
-      <div 
-        style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }} 
-      >
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} />
       </div>
     </div>
