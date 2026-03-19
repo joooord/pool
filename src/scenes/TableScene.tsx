@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as PIXI from 'pixi.js'
+import { useGameStore } from '../store/gameStore'
 
 interface Ball {
   id: number;
@@ -13,8 +14,19 @@ interface Ball {
   graphics: PIXI.Graphics;
 }
 
+const R = 0xdd2222; // Red
+const Y = 0xdddd22; // Yellow
+const B = 0x111111; // Black
+const W = 0xffffff; // White
+
 export function TableScene() {
   const containerRef = useRef<HTMLDivElement>(null)
+  
+  // Zustand State hooks
+  const currentPlayer = useGameStore(state => state.currentPlayer);
+  const message = useGameStore(state => state.message);
+  const p1Color = useGameStore(state => state.player1Color);
+  const p2Color = useGameStore(state => state.player2Color);
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -79,9 +91,8 @@ export function TableScene() {
       const baulkLineX = 40 + (TABLE_WIDTH - 80) * 0.2
       const cueStartX = baulkLineX - 20
       const cueStartY = TABLE_HEIGHT / 2
-      createBall(cueStartX, cueStartY, 0xffffff, true)
+      createBall(cueStartX, cueStartY, W, true)
 
-      const R = 0xdd2222, Y = 0xdddd22, B = 0x111111
       const rackPattern = [[R], [Y, R], [R, B, Y], [Y, R, Y, R], [R, Y, R, Y, Y]]
       const pyramidSpotX = 40 + (TABLE_WIDTH - 80) * 0.75
       const startY = TABLE_HEIGHT / 2
@@ -98,6 +109,7 @@ export function TableScene() {
 
       let isDragging = false
       let canShoot = true // Turn logic: can only shoot when balls are stopped
+      let currentTurnPots: number[] = []
 
       localApp.stage.on('pointerdown', () => {
         if (canShoot) isDragging = true
@@ -132,7 +144,9 @@ export function TableScene() {
         const angle = Math.atan2(dy, dx)
         cueBall.vx = Math.cos(angle) * power
         cueBall.vy = Math.sin(angle) * power
+        
         canShoot = false
+        currentTurnPots = []
       })
 
       const pockets = [
@@ -176,8 +190,10 @@ export function TableScene() {
               b.y = cueStartY
               b.vx = 0
               b.vy = 0
+              currentTurnPots.push(W)
             } else {
               b.graphics.destroy()
+              currentTurnPots.push(b.color)
               balls.splice(i, 1)
               continue
             }
@@ -220,6 +236,44 @@ export function TableScene() {
 
         if (!anyMoving && !canShoot) {
           canShoot = true // Turn ended
+          
+          // Evaluate Logic
+          const isFoul = currentTurnPots.includes(W);
+          const state = useGameStore.getState();
+          
+          if (isFoul) {
+            state.foul('In-off (potted white)');
+          } else {
+            let validPot = false;
+            let pottedRed = false;
+            let pottedYellow = false;
+            
+            for(let c of currentTurnPots) {
+              if (c === R) pottedRed = true;
+              if (c === Y) pottedYellow = true;
+            }
+
+            const pColor = state.currentPlayer === 1 ? state.player1Color : state.player2Color;
+
+            if (pColor === null && (pottedRed || pottedYellow)) {
+              // Open table, assign color based on first pot
+              if (pottedRed && !pottedYellow) {
+                 state.assignColors('red', state.currentPlayer);
+                 validPot = true;
+              } else if (pottedYellow && !pottedRed) {
+                 state.assignColors('yellow', state.currentPlayer);
+                 validPot = true;
+              } else {
+                 validPot = true; // Potted both, weird scenario but counts as valid for now.
+              }
+            } else if (pColor !== null) {
+              if (pColor === 'red' && pottedRed) validPot = true;
+              if (pColor === 'yellow' && pottedYellow) validPot = true;
+            }
+            
+            // Technically in standard rules potting opponent's ball is a foul, but let's just do turn end for now.
+            state.endTurn(validPot);
+          }
         }
       })
 
@@ -253,8 +307,25 @@ export function TableScene() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-      <h2 style={{ margin: '0 0 16px 0', opacity: 0.8 }}>Table Preview</h2>
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+      
+      {/* HUD Layer */}
+      <div style={{ padding: '16px', backgroundColor: '#111', color: '#fff', textAlign: 'center' }}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '1.2rem' }}>{message}</h2>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', fontSize: '0.9rem', opacity: 0.8 }}>
+          <div>
+            <span style={{ fontWeight: currentPlayer === 1 ? 'bold' : 'normal', color: currentPlayer === 1 ? '#00ffcc' : '#fff' }}>
+              P1 Color: {p1Color || 'Open'}
+            </span>
+          </div>
+          <div>
+            <span style={{ fontWeight: currentPlayer === 2 ? 'bold' : 'normal', color: currentPlayer === 2 ? '#00ffcc' : '#fff' }}>
+              P2 Color: {p2Color || 'Open'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#000' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} />
       </div>
     </div>
