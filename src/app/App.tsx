@@ -1,18 +1,23 @@
-import { type ReactNode, useState } from 'react'
+import { useState } from 'react'
 import { AppShell } from '../components/layout/AppShell'
 import { NavigationRail, type SceneId } from '../components/navigation/NavigationRail'
 import { HomeScene } from '../scenes/HomeScene'
 import { ControlSandboxScene } from '../scenes/ControlSandboxScene'
 import { TableScene } from '../scenes/TableScene'
-
-const SCENE_MAP: Record<SceneId, ReactNode> = {
-  home: <HomeScene />,
-  sandbox: <ControlSandboxScene />,
-  table: <TableScene />,
-}
+import { useGameStore } from '../store/gameStore'
 
 export default function App() {
   const [scene, setScene] = useState<SceneId>('home')
+  const gameKey = useGameStore(state => state.gameKey)
+
+  const renderScene = () => {
+    switch (scene) {
+      case 'home': return <HomeScene />
+      case 'sandbox': return <ControlSandboxScene />
+      case 'table': return <TableScene key={gameKey} />
+      default: return null
+    }
+  }
 
   return (
     <AppShell
@@ -24,7 +29,7 @@ export default function App() {
       }
       navSlot={<NavigationRail active={scene} onChange={setScene} />}
     >
-      {SCENE_MAP[scene]}
+      {renderScene()}
     </AppShell>
   )
 }

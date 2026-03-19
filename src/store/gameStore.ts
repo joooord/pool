@@ -2,8 +2,11 @@ import { create } from 'zustand'
 
 export type Player = 1 | 2;
 export type Color = 'red' | 'yellow' | 'black' | null;
+export type GameStatus = 'playing' | 'won_p1' | 'won_p2' | 'lost_p1' | 'lost_p2';
 
 export interface GameState {
+  gameKey: number;
+  status: GameStatus;
   currentPlayer: Player;
   player1Color: Color;
   player2Color: Color;
@@ -12,9 +15,13 @@ export interface GameState {
   foul: (msg: string) => void;
   endTurn: (pottedValidColor: boolean) => void;
   assignColors: (pottedColor: 'red' | 'yellow', player: Player) => void;
+  potBlack: (player: Player, isValidWin: boolean) => void;
+  resetGame: () => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
+  gameKey: 0,
+  status: 'playing',
   currentPlayer: 1,
   player1Color: null,
   player2Color: null,
@@ -22,6 +29,7 @@ export const useGameStore = create<GameState>((set) => ({
   message: "Player 1 to break (Open Table)",
 
   foul: (msg: string) => set((state) => {
+    if (state.status !== 'playing') return state;
     const nextPlayer = state.currentPlayer === 1 ? 2 : 1;
     const nextColor = nextPlayer === 1 ? state.player1Color : state.player2Color;
     return {
@@ -32,7 +40,7 @@ export const useGameStore = create<GameState>((set) => ({
   }),
 
   assignColors: (pottedColor: 'red' | 'yellow', player: Player) => set((state) => {
-    if (state.player1Color) return {}; // already assigned
+    if (state.status !== 'playing' || state.player1Color) return state;
     
     const p1Color = player === 1 ? pottedColor : (pottedColor === 'red' ? 'yellow' : 'red');
     const p2Color = p1Color === 'red' ? 'yellow' : 'red';
@@ -45,9 +53,8 @@ export const useGameStore = create<GameState>((set) => ({
   }),
 
   endTurn: (pottedValidColor: boolean) => set((state) => {
+    if (state.status !== 'playing') return state;
     if (pottedValidColor) {
-      // Valid pot keeps the turn. If 2 shots carry over, it stays 2 unless rules specify otherwise.
-      // English 8-ball: potting on the first shot of a 2-shot carry keeps it at 2 shots? Actually you lose the free shot if you pot, but we'll keep it simple: pot a ball, keep your turn (always resetting to 1 shot remaining for normal play).
       const pColor = state.currentPlayer === 1 ? state.player1Color : state.player2Color;
       return {
         shotsRemaining: 1,
@@ -71,5 +78,32 @@ export const useGameStore = create<GameState>((set) => ({
         };
       }
     }
-  })
+  }),
+
+  potBlack: (player: Player, isValidWin: boolean) => set((state) => {
+    if (state.status !== 'playing') return state;
+    if (isValidWin) {
+      return {
+        status: player === 1 ? 'won_p1' : 'won_p2',
+        message: `Player ${player} WINS!`
+      };
+    } else {
+      // Foul on black = automatic loss
+      const winner = player === 1 ? 2 : 1;
+      return {
+        status: player === 1 ? 'lost_p1' : 'lost_p2',
+        message: `FOUL ON BLACK. Player ${player} LOSES. Player ${winner} WINS!`
+      };
+    }
+  }),
+
+  resetGame: () => set((state) => ({
+    gameKey: state.gameKey + 1,
+    status: 'playing',
+    currentPlayer: 1,
+    player1Color: null,
+    player2Color: null,
+    shotsRemaining: 1,
+    message: "Player 1 to break (Open Table)"
+  }))
 }));

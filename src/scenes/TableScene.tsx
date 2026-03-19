@@ -19,7 +19,6 @@ const Y = 0xdddd22;
 const B = 0x111111; 
 const W = 0xffffff; 
 
-// Simple procedural audio for ball clacks
 let audioCtx: AudioContext | null = null;
 const playClack = (velocity: number) => {
   if (!audioCtx) {
@@ -52,6 +51,7 @@ export function TableScene() {
   const message = useGameStore(state => state.message);
   const p1Color = useGameStore(state => state.player1Color);
   const p2Color = useGameStore(state => state.player2Color);
+  const gameStatus = useGameStore(state => state.status);
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -91,7 +91,6 @@ export function TableScene() {
       baize.fill(0x2a8b3e)
       localApp.stage.addChild(baize)
 
-      // Aim Line & Cue Stick
       const aimLine = new PIXI.Graphics()
       localApp.stage.addChild(aimLine)
       
@@ -139,11 +138,12 @@ export function TableScene() {
       let currentTurnPots: number[] = []
 
       localApp.stage.on('pointerdown', () => {
-        // Initialize audio context on first user interaction
         if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         
-        if (canShoot && useGameStore.getState().currentPlayer === 1) isDragging = true
+        const state = useGameStore.getState();
+        if (state.status !== 'playing') return;
+        if (canShoot && state.currentPlayer === 1) isDragging = true
       })
 
       localApp.stage.on('pointermove', (e) => {
@@ -156,13 +156,11 @@ export function TableScene() {
         const angle = Math.atan2(dy, dx)
         const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 300)
 
-        // Draw aim line forward
         aimLine.clear()
         aimLine.moveTo(cueBall.x, cueBall.y)
         aimLine.lineTo(cueBall.x + Math.cos(angle) * 500, cueBall.y + Math.sin(angle) * 500)
         aimLine.stroke({ width: 1, color: 0xffffff, alpha: 0.3 })
 
-        // Draw cue stick pulling back
         cueStick.clear()
         const stickStartX = cueBall.x - Math.cos(angle) * (15 + dist * 0.2)
         const stickStartY = cueBall.y - Math.sin(angle) * (15 + dist * 0.2)
@@ -189,7 +187,7 @@ export function TableScene() {
         let power = Math.sqrt(dx*dx + dy*dy) * 0.05
         if (power > 15) power = 15
         
-        if (power > 0.5) playClack(power * 2); // Strike sound
+        if (power > 0.5) playClack(power * 2); 
         
         const angle = Math.atan2(dy, dx)
         cueBall.vx = Math.cos(angle) * power
@@ -207,10 +205,12 @@ export function TableScene() {
 
       const triggerAI = () => {
         setTimeout(() => {
+          const state = useGameStore.getState();
+          if (state.status !== 'playing') return;
+
           const cueBall = balls.find(b => b.isCue)
           if (!cueBall) return;
           
-          const state = useGameStore.getState();
           const aiColorStr = state.player2Color;
           
           let targetColor = -1;
@@ -331,9 +331,29 @@ export function TableScene() {
           canShoot = true 
           
           const isFoul = currentTurnPots.includes(W);
+          const pottedBlack = currentTurnPots.includes(B);
           const state = useGameStore.getState();
-          
-          if (isFoul) {
+
+          if (state.status !== 'playing') return;
+
+          if (pottedBlack) {
+            if (isFoul) {
+              state.potBlack(state.currentPlayer, false);
+            } else {
+              const pColor = state.currentPlayer === 1 ? state.player1Color : state.player2Color;
+              if (!pColor) {
+                 state.potBlack(state.currentPlayer, false);
+              } else {
+                const targetColor = pColor === 'red' ? R : Y;
+                const remainingTargets = balls.filter(b => b.color === targetColor);
+                if (remainingTargets.length === 0) {
+                  state.potBlack(state.currentPlayer, true);
+                } else {
+                  state.potBlack(state.currentPlayer, false);
+                }
+              }
+            }
+          } else if (isFoul) {
             state.foul('In-off (potted white)');
           } else {
             let validPot = false;
@@ -365,7 +385,7 @@ export function TableScene() {
             state.endTurn(validPot);
           }
           
-          if (useGameStore.getState().currentPlayer === 2) {
+          if (useGameStore.getState().currentPlayer === 2 && useGameStore.getState().status === 'playing') {
              triggerAI();
           }
         }
@@ -404,7 +424,7 @@ export function TableScene() {
   }, [])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', position: 'relative' }}>
       <div style={{ padding: '16px', backgroundColor: '#111', color: '#fff', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 10 }}>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', transition: 'color 0.3s' }}>{message}</h2>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', fontSize: '0.9rem', opacity: 0.8 }}>
@@ -420,8 +440,41 @@ export function TableScene() {
           </div>
         </div>
       </div>
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#000', cursor: 'crosshair' }}>
+      
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#000', cursor: 'crosshair', position: 'relative' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} />
+        
+        {gameStatus !== 'playing' && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 20
+          }}>
+            <h1 style={{ color: gameStatus.includes('won') ? '#00ffcc' : '#ff003c', fontSize: '3rem', margin: '0 0 20px 0', textTransform: 'uppercase' }}>
+              {message}
+            </h1>
+            <button 
+              onClick={() => useGameStore.getState().resetGame()}
+              style={{
+                padding: '12px 24px',
+                fontSize: '1.2rem',
+                backgroundColor: '#fff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Play Again
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
