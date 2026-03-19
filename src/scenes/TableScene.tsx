@@ -14,10 +14,36 @@ interface Ball {
   graphics: PIXI.Graphics;
 }
 
-const R = 0xdd2222; // Red
-const Y = 0xdddd22; // Yellow
-const B = 0x111111; // Black
-const W = 0xffffff; // White
+const R = 0xdd2222; 
+const Y = 0xdddd22; 
+const B = 0x111111; 
+const W = 0xffffff; 
+
+// Simple procedural audio for ball clacks
+let audioCtx: AudioContext | null = null;
+const playClack = (velocity: number) => {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (velocity < 0.2) return;
+  
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(800 + Math.random() * 200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.05);
+  
+  const vol = Math.min(0.5, velocity * 0.05);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+  
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.05);
+};
 
 export function TableScene() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -65,8 +91,12 @@ export function TableScene() {
       baize.fill(0x2a8b3e)
       localApp.stage.addChild(baize)
 
+      // Aim Line & Cue Stick
       const aimLine = new PIXI.Graphics()
       localApp.stage.addChild(aimLine)
+      
+      const cueStick = new PIXI.Graphics()
+      localApp.stage.addChild(cueStick)
 
       const balls: Ball[] = []
       const ballRadius = 8
@@ -109,6 +139,10 @@ export function TableScene() {
       let currentTurnPots: number[] = []
 
       localApp.stage.on('pointerdown', () => {
+        // Initialize audio context on first user interaction
+        if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
         if (canShoot && useGameStore.getState().currentPlayer === 1) isDragging = true
       })
 
@@ -117,16 +151,34 @@ export function TableScene() {
         const cueBall = balls.find(b => b.isCue)
         if (!cueBall) return
 
+        const dx = cueBall.x - e.global.x
+        const dy = cueBall.y - e.global.y
+        const angle = Math.atan2(dy, dx)
+        const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 300)
+
+        // Draw aim line forward
         aimLine.clear()
         aimLine.moveTo(cueBall.x, cueBall.y)
-        aimLine.lineTo(e.global.x, e.global.y)
-        aimLine.stroke({ width: 2, color: 0xffffff, alpha: 0.5 })
+        aimLine.lineTo(cueBall.x + Math.cos(angle) * 500, cueBall.y + Math.sin(angle) * 500)
+        aimLine.stroke({ width: 1, color: 0xffffff, alpha: 0.3 })
+
+        // Draw cue stick pulling back
+        cueStick.clear()
+        const stickStartX = cueBall.x - Math.cos(angle) * (15 + dist * 0.2)
+        const stickStartY = cueBall.y - Math.sin(angle) * (15 + dist * 0.2)
+        const stickEndX = stickStartX - Math.cos(angle) * 100
+        const stickEndY = stickStartY - Math.sin(angle) * 100
+        
+        cueStick.moveTo(stickStartX, stickStartY)
+        cueStick.lineTo(stickEndX, stickEndY)
+        cueStick.stroke({ width: 4, color: 0x8b4513, alpha: 1 })
       })
 
       localApp.stage.on('pointerup', (e) => {
         if (!isDragging) return
         isDragging = false
         aimLine.clear()
+        cueStick.clear()
 
         const cueBall = balls.find(b => b.isCue)
         if (!cueBall) return
@@ -136,6 +188,8 @@ export function TableScene() {
         
         let power = Math.sqrt(dx*dx + dy*dy) * 0.05
         if (power > 15) power = 15
+        
+        if (power > 0.5) playClack(power * 2); // Strike sound
         
         const angle = Math.atan2(dy, dx)
         cueBall.vx = Math.cos(angle) * power
@@ -178,9 +232,10 @@ export function TableScene() {
           const dy = target.y - cueBall.y;
           const angle = Math.atan2(dy, dx);
           
-          // Slight randomness to AI aim
-          const finalAngle = angle + (Math.random() * 0.2 - 0.1);
+          const finalAngle = angle + (Math.random() * 0.1 - 0.05);
           const power = 8 + Math.random() * 4;
+
+          playClack(power * 2);
 
           cueBall.vx = Math.cos(finalAngle) * power;
           cueBall.vy = Math.sin(finalAngle) * power;
@@ -233,10 +288,14 @@ export function TableScene() {
             }
           }
 
-          if (b.x < 40 + b.radius) { b.x = 40 + b.radius; b.vx *= -1 }
-          if (b.x > TABLE_WIDTH - 40 - b.radius) { b.x = TABLE_WIDTH - 40 - b.radius; b.vx *= -1 }
-          if (b.y < 40 + b.radius) { b.y = 40 + b.radius; b.vy *= -1 }
-          if (b.y > TABLE_HEIGHT - 40 - b.radius) { b.y = TABLE_HEIGHT - 40 - b.radius; b.vy *= -1 }
+          let bounced = false;
+          let impactVel = 0;
+          if (b.x < 40 + b.radius) { b.x = 40 + b.radius; b.vx *= -1; bounced = true; impactVel = Math.abs(b.vx); }
+          if (b.x > TABLE_WIDTH - 40 - b.radius) { b.x = TABLE_WIDTH - 40 - b.radius; b.vx *= -1; bounced = true; impactVel = Math.abs(b.vx); }
+          if (b.y < 40 + b.radius) { b.y = 40 + b.radius; b.vy *= -1; bounced = true; impactVel = Math.abs(b.vy); }
+          if (b.y > TABLE_HEIGHT - 40 - b.radius) { b.y = TABLE_HEIGHT - 40 - b.radius; b.vy *= -1; bounced = true; impactVel = Math.abs(b.vy); }
+          
+          if (bounced) playClack(impactVel);
 
           for (let j = i - 1; j >= 0; j--) {
             const b2 = balls[j]
@@ -259,6 +318,8 @@ export function TableScene() {
               b.vy -= p * ny
               b2.vx += p * nx
               b2.vy += p * ny
+              
+              playClack(Math.abs(p));
             }
           }
 
@@ -335,27 +396,31 @@ export function TableScene() {
       isSubscribed = false
       if (resizeListener) window.removeEventListener('resize', resizeListener)
       if (app) app.destroy(true)
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
     }
   }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-      <div style={{ padding: '16px', backgroundColor: '#111', color: '#fff', textAlign: 'center' }}>
-        <h2 style={{ margin: '0 0 8px 0', fontSize: '1.2rem' }}>{message}</h2>
+      <div style={{ padding: '16px', backgroundColor: '#111', color: '#fff', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', zIndex: 10 }}>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', transition: 'color 0.3s' }}>{message}</h2>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', fontSize: '0.9rem', opacity: 0.8 }}>
           <div>
-            <span style={{ fontWeight: currentPlayer === 1 ? 'bold' : 'normal', color: currentPlayer === 1 ? '#00ffcc' : '#fff' }}>
+            <span style={{ fontWeight: currentPlayer === 1 ? 'bold' : 'normal', color: currentPlayer === 1 ? '#00ffcc' : '#fff', transition: 'color 0.3s' }}>
               P1 Color: {p1Color || 'Open'}
             </span>
           </div>
           <div>
-            <span style={{ fontWeight: currentPlayer === 2 ? 'bold' : 'normal', color: currentPlayer === 2 ? '#ff003c' : '#fff' }}>
+            <span style={{ fontWeight: currentPlayer === 2 ? 'bold' : 'normal', color: currentPlayer === 2 ? '#ff003c' : '#fff', transition: 'color 0.3s' }}>
               CPU Color: {p2Color || 'Open'}
             </span>
           </div>
         </div>
       </div>
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#000' }}>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#000', cursor: 'crosshair' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} />
       </div>
     </div>
