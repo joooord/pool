@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Financial Narrative Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f0f0f;
+      --panel: #161616;
+      --panel-soft: #1d1d1d;
+      --text: #f5f2eb;
+      --muted: #b9b3a5;
+      --accent: #d4a85a;
+      --accent-dark: #9b7a3d;
+      --amber: #ffb347;
+      --gold: #f6d78c;
+      --danger: #ff8a65;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: clamp(1.5rem, 2.5vw, 3rem);
+    }
+
+    h1 {
+      font-size: clamp(1.75rem, 3vw, 2.65rem);
+      letter-spacing: -0.02em;
+      margin: 0 0 0.25rem;
+    }
+
+    p.description {
+      color: var(--muted);
+      margin: 0 0 2rem;
+      max-width: 720px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(212, 168, 90, 0.18);
+      border-radius: 18px;
+      padding: 1.5rem;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+    }
+
+    fieldset {
+      border: none;
+      margin: 0 0 1.5rem;
+      padding: 0;
+    }
+
+    fieldset legend {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    input, textarea {
+      width: 100%;
+      background: var(--panel-soft);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 0.75rem 0.85rem;
+      color: var(--text);
+      font: inherit;
+    }
+
+    input:focus, textarea:focus {
+      outline: 1px solid var(--accent);
+      border-color: var(--accent);
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    .metric-card {
+      background: var(--panel-soft);
+      border-radius: 12px;
+      padding: 0.9rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .metric-value {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-top: 0.35rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 0.85rem 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(120deg, var(--accent), #f6d78c);
+      color: #181818;
+    }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button:not(:disabled):hover {
+      transform: translateY(-1px);
+    }
+
+    .output-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .status-pill {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--muted);
+    }
+
+    .narrative {
+      margin-top: 1.5rem;
+      line-height: 1.65;
+      font-size: 1rem;
+    }
+
+    .directives {
+      margin-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 1rem;
+    }
+
+    .directives h3 {
+      margin-top: 0;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      font-size: 1rem;
+    }
+
+    .directives ol {
+      margin: 0;
+      padding-left: 1.2rem;
+      line-height: 1.6;
+    }
+
+    .callouts {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .callout {
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      font-weight: 500;
+    }
+
+    .callout.red {
+      background: rgba(255, 138, 101, 0.1);
+      color: var(--amber);
+      border: 1px solid rgba(255, 179, 71, 0.3);
+    }
+
+    .callout.green {
+      background: rgba(246, 215, 140, 0.08);
+      color: var(--gold);
+      border: 1px solid rgba(246, 215, 140, 0.4);
+    }
+
+    .print-note {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    @media print {
+      body {
+        background: white;
+        color: black;
+        font-size: 12pt;
+      }
+      .panel {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        background: white;
+      }
+      button, .print-note {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Weekly Financial Narrative</h1>
+    <p class="description">Transform raw P&amp;L inputs into an investor-ready executive readout and directives in minutes. Built for hospitality operators who demand clarity every week.</p>
+  </header>
+
+  <main class="grid">
+    <section class="panel" aria-label="Input form">
+      <form id="finance-form">
+        <fieldset>
+          <legend>Essentials</legend>
+          <label>
+            Venue name
+            <input type="text" name="venue" required placeholder="e.g. The Gilded Swan" />
+          </label>
+          <label>
+            Week ending
+            <input type="date" name="week" required />
+          </label>
+          <label>
+            Total revenue (£)
+            <input type="number" name="totalRevenue" min="0" step="0.01" required />
+          </label>
+          <label>
+            Total covers
+            <input type="number" name="covers" min="0" step="1" required />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Revenue mix</legend>
+          <label>
+            Food revenue (£)
+            <input type="number" name="foodRevenue" min="0" step="0.01" required />
+          </label>
+          <label>
+            Beverage revenue (£)
+            <input type="number" name="bevRevenue" min="0" step="0.01" required />
+          </label>
+          <label>
+            Other revenue (£)
+            <input type="number" name="otherRevenue" min="0" step="0.01" placeholder="Optional" />
+          </label>
+          <label>
+            Last week's revenue (£)
+            <input type="number" name="priorRevenue" min="0" step="0.01" placeholder="Optional" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Cost base</legend>
+          <label>
+            Total wage cost (£)
+            <input type="number" name="wageCost" min="0" step="0.01" required />
+          </label>
+          <label>
+            Total food cost (£)
+            <input type="number" name="foodCost" min="0" step="0.01" required />
+          </label>
+          <label>
+            Total beverage cost (£)
+            <input type="number" name="bevCost" min="0" step="0.01" required />
+          </label>
+          <label>
+            Other costs (£)
+            <input type="number" name="otherCost" min="0" step="0.01" placeholder="Optional" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Context</legend>
+          <label>
+            Trading notes, events, anomalies
+            <textarea name="context" placeholder="e.g. Spring menu launched Thursday, head chef off sick, rail strike Saturday"></textarea>
+          </label>
+        </fieldset>
+
+        <div class="metrics-grid" id="metric-cards"></div>
+
+        <div class="actions">
+          <button type="button" class="secondary" id="api-key-btn">Set API Key</button>
+          <button type="submit" class="primary" id="generate-btn">Generate Narrative</button>
+        </div>
+      </form>
+      <p class="print-note">Tip: Generate, review, and print directly. Layout is optimised for board packs.</p>
+    </section>
+
+    <section class="panel" aria-live="polite">
+      <div class="output-header">
+        <h2 style="margin:0">Executive Output</h2>
+        <span class="status-pill" id="status-pill">Awaiting inputs</span>
+      </div>
+      <article class="narrative" id="narrative">Input the week's trading data to surface the performance storyline, operational directives, and investor-ready commentary.</article>
+      <div class="directives">
+        <h3>Directive Stack</h3>
+        <ol id="directives-list">
+          <li>Directive 1 will land here.</li>
+          <li>Directive 2 will land here.</li>
+          <li>Directive 3 will land here.</li>
+        </ol>
+      </div>
+      <div class="callouts">
+        <div class="callout red" id="red-flag">Red Flag metrics will appear here.</div>
+        <div class="callout green" id="green-light">Green Light highlights will appear here.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const metricDefinitions = [
+      { key: 'revenuePerCover', label: 'Rev per Cover', format: (v) => formatCurrency(v) },
+      { key: 'wagePercent', label: 'Wage % of Rev', suffix: '%', decimals: 1 },
+      { key: 'foodGP', label: 'Food GP %', suffix: '%', decimals: 1 },
+      { key: 'bevGP', label: 'Beverage GP %', suffix: '%', decimals: 1 },
+      { key: 'totalGP', label: 'Total GP %', suffix: '%', decimals: 1 },
+      { key: 'wowChange', label: 'WoW Revenue %', suffix: '%', decimals: 1 }
+    ];
+
+    const metricCardsContainer = document.getElementById('metric-cards');
+
+    function createMetricCards() {
+      metricCardsContainer.innerHTML = metricDefinitions.map(def => `
+        <div class="metric-card">
+          <div class="metric-label">${def.label}</div>
+          <div class="metric-value" id="${def.key}">—</div>
+        </div>
+      `).join('');
+    }
+
+    createMetricCards();
+
+    const form = document.getElementById('finance-form');
+    const statusPill = document.getElementById('status-pill');
+    const narrativeEl = document.getElementById('narrative');
+    const directivesList = document.getElementById('directives-list');
+    const redFlagEl = document.getElementById('red-flag');
+    const greenLightEl = document.getElementById('green-light');
+
+    const apiKeyBtn = document.getElementById('api-key-btn');
+    const generateBtn = document.getElementById('generate-btn');
+
+    const SYSTEM_PROMPT = "You are a fractional CFO specialising in hospitality. Write a 300-word executive narrative of this week's performance. Be specific, direct, and commercially focused. End with exactly 3 numbered operational directives for next week. Flag any metric outside industry benchmarks.";
+
+    apiKeyBtn.addEventListener('click', () => {
+      const existing = localStorage.getItem('openrouter_key') || '';
+      const input = prompt('Enter your OpenRouter API key', existing);
+      if (input) {
+        localStorage.setItem('openrouter_key', input.trim());
+        apiKeyBtn.textContent = 'API Key Stored';
+      } else if (input === '') {
+        localStorage.removeItem('openrouter_key');
+        apiKeyBtn.textContent = 'Set API Key';
+      }
+    });
+
+    function parseValue(name) {
+      const value = parseFloat(form.elements[name].value);
+      return isNaN(value) ? 0 : value;
+    }
+
+    function formatCurrency(value) {
+      if (!value && value !== 0) return '—';
+      return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(value);
+    }
+
+    function formatNumber(value, decimals = 1) {
+      if (value === null || isNaN(value)) return '—';
+      return value.toFixed(decimals);
+    }
+
+    function computeMetrics() {
+      const totals = {
+        totalRevenue: parseValue('totalRevenue'),
+        covers: parseValue('covers'),
+        foodRevenue: parseValue('foodRevenue'),
+        bevRevenue: parseValue('bevRevenue'),
+        otherRevenue: parseValue('otherRevenue'),
+        wageCost: parseValue('wageCost'),
+        foodCost: parseValue('foodCost'),
+        bevCost: parseValue('bevCost'),
+        otherCost: parseValue('otherCost'),
+        priorRevenue: parseValue('priorRevenue')
+      };
+
+      const revenuePerCover = totals.covers ? totals.totalRevenue / totals.covers : null;
+      const wagePercent = totals.totalRevenue ? (totals.wageCost / totals.totalRevenue) * 100 : null;
+      const foodGP = totals.foodRevenue ? ((totals.foodRevenue - totals.foodCost) / totals.foodRevenue) * 100 : null;
+      const bevGP = totals.bevRevenue ? ((totals.bevRevenue - totals.bevCost) / totals.bevRevenue) * 100 : null;
+      const totalCosts = totals.wageCost + totals.foodCost + totals.bevCost + totals.otherCost;
+      const totalGP = totals.totalRevenue ? ((totals.totalRevenue - totalCosts) / totals.totalRevenue) * 100 : null;
+      const wowChange = totals.priorRevenue ? ((totals.totalRevenue - totals.priorRevenue) / totals.priorRevenue) * 100 : null;
+      const foodCostPercent = totals.foodRevenue ? (totals.foodCost / totals.foodRevenue) * 100 : null;
+      const bevCostPercent = totals.bevRevenue ? (totals.bevCost / totals.bevRevenue) * 100 : null;
+
+      return {
+        ...totals,
+        revenuePerCover,
+        wagePercent,
+        foodGP,
+        bevGP,
+        totalGP,
+        wowChange,
+        foodCostPercent,
+        bevCostPercent
+      };
+    }
+
+    function updateMetricCards(metrics) {
+      metricDefinitions.forEach(def => {
+        const el = document.getElementById(def.key);
+        const value = metrics[def.key];
+        if (def.format) {
+          el.textContent = value || value === 0 ? def.format(value) : '—';
+        } else {
+          el.textContent = value || value === 0 ? `${formatNumber(value, def.decimals)}${def.suffix || ''}` : '—';
+        }
+      });
+    }
+
+    function deriveCallouts(metrics) {
+      const redFlags = [];
+      if (metrics.wagePercent && metrics.wagePercent > 35) {
+        redFlags.push(`Wage cost at ${formatNumber(metrics.wagePercent)}% (>35% benchmark).`);
+      }
+      if (metrics.foodCostPercent && metrics.foodCostPercent > 32) {
+        redFlags.push(`Food cost at ${formatNumber(metrics.foodCostPercent)}% (>32% benchmark).`);
+      }
+      if (metrics.bevCostPercent && metrics.bevCostPercent > 25) {
+        redFlags.push(`Beverage cost at ${formatNumber(metrics.bevCostPercent)}% (>25% benchmark).`);
+      }
+
+      redFlagEl.textContent = redFlags.length ? redFlags.join(' ') : 'All monitored metrics within benchmark bands.';
+
+      let green = '';
+      if (metrics.totalGP && metrics.totalGP >= 65) {
+        green = `Total GP healthy at ${formatNumber(metrics.totalGP)}%.`;
+      } else if (metrics.wowChange && metrics.wowChange >= 5) {
+        green = `Revenue grew ${formatNumber(metrics.wowChange)}% week-on-week.`;
+      } else if (metrics.revenuePerCover && metrics.revenuePerCover >= 85) {
+        green = `Revenue per cover strong at ${formatCurrency(metrics.revenuePerCover)}.`;
+      }
+
+      greenLightEl.textContent = green || 'Awaiting standout metrics.';
+    }
+
+    form.addEventListener('input', () => {
+      const metrics = computeMetrics();
+      updateMetricCards(metrics);
+      deriveCallouts(metrics);
+    });
+
+    async function generateNarrative(event) {
+      event.preventDefault();
+      const apiKey = localStorage.getItem('openrouter_key');
+      if (!apiKey) {
+        alert('Please store your OpenRouter API key first.');
+        return;
+      }
+
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      const formData = Object.fromEntries(new FormData(form).entries());
+      const metrics = computeMetrics();
+      statusPill.textContent = 'Generating…';
+      statusPill.style.color = varAccent();
+      generateBtn.disabled = true;
+
+      const payload = {
+        model: 'anthropic/claude-3-5-haiku',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: [
+              `Venue: ${formData.venue}`,
+              `Week ending: ${formData.week}`,
+              `Total revenue: £${formatNumber(metrics.totalRevenue || 0, 0)}`,
+              `Covers: ${metrics.covers || 0}`,
+              `Food revenue/cost: £${formatNumber(metrics.foodRevenue || 0, 0)} / £${formatNumber(metrics.foodCost || 0, 0)}`,
+              `Beverage revenue/cost: £${formatNumber(metrics.bevRevenue || 0, 0)} / £${formatNumber(metrics.bevCost || 0, 0)}`,
+              metrics.otherRevenue ? `Other revenue: £${formatNumber(metrics.otherRevenue, 0)}` : null,
+              metrics.otherCost ? `Other cost: £${formatNumber(metrics.otherCost, 0)}` : null,
+              metrics.revenuePerCover ? `Revenue per cover: ${formatCurrency(metrics.revenuePerCover)}` : null,
+              metrics.wagePercent ? `Wage %: ${formatNumber(metrics.wagePercent)}%` : null,
+              metrics.foodGP ? `Food GP %: ${formatNumber(metrics.foodGP)}%` : null,
+              metrics.bevGP ? `Beverage GP %: ${formatNumber(metrics.bevGP)}%` : null,
+              metrics.totalGP ? `Total GP %: ${formatNumber(metrics.totalGP)}%` : null,
+              metrics.wowChange ? `Week-on-week revenue change: ${formatNumber(metrics.wowChange)}%` : null,
+              formData.context ? `Context notes: ${formData.context}` : null,
+              redFlagEl.textContent ? `Red Flag focus: ${redFlagEl.textContent}` : null,
+              greenLightEl.textContent ? `Green Light highlight: ${greenLightEl.textContent}` : null
+            ].filter(Boolean).join('\n')
+          }
+        ],
+        max_tokens: 900,
+        temperature: 0.4
+      };
+
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': 'https://hospitality-ai-toolkit.local',
+            'X-Title': 'Weekly Financial Narrative Generator'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error (${response.status})`);
+        }
+
+        const data = await response.json();
+        const content = data?.choices?.[0]?.message?.content;
+        if (!content) throw new Error('No content returned from model.');
+
+        renderOutput(content);
+        statusPill.textContent = 'Narrative ready';
+        statusPill.style.color = '#6be3b2';
+      } catch (error) {
+        console.error(error);
+        statusPill.textContent = 'Error';
+        statusPill.style.color = varDanger();
+        narrativeEl.textContent = `Generation failed: ${error.message}`;
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+
+    form.addEventListener('submit', generateNarrative);
+
+    function renderOutput(content) {
+      const paragraphs = content
+        .split(/\n{2,}/)
+        .map(chunk => chunk.trim())
+        .filter(Boolean);
+
+      const directives = [];
+      const narrativeParts = [];
+
+      paragraphs.forEach(p => {
+        if (/^\d+\./.test(p)) {
+          directives.push(p.replace(/^\d+\.\s*/, '').trim());
+        } else {
+          narrativeParts.push(p);
+        }
+      });
+
+      narrativeEl.innerHTML = narrativeParts
+        .map(p => `<p>${p}</p>`)
+        .join('');
+
+      if (directives.length >= 3) {
+        directivesList.innerHTML = directives.slice(0, 3)
+          .map(d => `<li>${d}</li>`)
+          .join('');
+      }
+    }
+
+    function varAccent() {
+      return getComputedStyle(document.documentElement).getPropertyValue('--accent');
+    }
+
+    function varDanger() {
+      return getComputedStyle(document.documentElement).getPropertyValue('--danger');
+    }
+  </script>
+</body>
+</html>

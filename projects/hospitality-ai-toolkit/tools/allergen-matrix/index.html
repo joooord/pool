@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dietary &amp; Allergen Matrix Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #0f0f0f;
+      --accent: #d4a85a;
+      --canvas: #fafafa;
+      --muted: #8c8c8c;
+      --border: #e0e0e0;
+      --amber: #f8d486;
+      --slate: #d5d5d5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f0f;
+      color: var(--canvas);
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      font-size: clamp(1.75rem, 3vw, 2.4rem);
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    p.lede {
+      max-width: 720px;
+      color: #f0f0f0;
+      margin: 0;
+    }
+
+    .card {
+      background: rgba(250, 250, 250, 0.08);
+      border: 1px solid rgba(212, 168, 90, 0.25);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.9rem;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--canvas);
+      font-size: 1rem;
+    }
+
+    input[type="text"]::placeholder,
+    textarea::placeholder {
+      color: rgba(250, 250, 250, 0.5);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 20px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #0f0f0f;
+      box-shadow: 0 10px 25px rgba(212, 168, 90, 0.35);
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--canvas);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    button.ghost {
+      background: rgba(15, 15, 15, 0.1);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      letter-spacing: 0;
+      border: 1px solid rgba(15, 15, 15, 0.1);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .table-shell {
+      background: var(--canvas);
+      border-radius: 18px;
+      padding: 24px;
+      color: var(--ink);
+      border: 1px solid #ddd;
+    }
+
+    .table-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .table-controls .left {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .table-controls .right {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 900px;
+      font-size: 0.95rem;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: var(--canvas);
+      z-index: 2;
+      font-weight: 600;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody th {
+      position: sticky;
+      left: 0;
+      background: var(--canvas);
+      text-align: left;
+      font-weight: 600;
+      padding: 12px 14px;
+      border-right: 1px solid var(--border);
+      min-width: 220px;
+    }
+
+    tbody td,
+    tbody th {
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody td {
+      text-align: center;
+      padding: 12px 8px;
+      min-width: 60px;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--ink);
+    }
+
+    tbody td.state-no {
+      background: transparent;
+      color: inherit;
+    }
+
+    tbody td.state-yes {
+      background: var(--amber);
+      color: #5a420d;
+    }
+
+    tbody td.state-maybe {
+      background: var(--slate);
+      color: #333;
+    }
+
+    .allergen-label {
+      display: inline-flex;
+      align-items: flex-end;
+      height: 110px;
+      justify-content: center;
+      text-align: center;
+      transform: rotate(-45deg);
+      transform-origin: bottom center;
+      width: 0;
+      white-space: nowrap;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #444;
+    }
+
+    thead th.allergen-head {
+      height: 130px;
+      padding: 0;
+      width: 40px;
+    }
+
+    .dish-meta {
+      font-size: 0.8rem;
+      color: #555;
+      margin-top: 6px;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      color: #4a4a4a;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend .swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .legend .swatch.yes { background: var(--amber); }
+    .legend .swatch.maybe { background: var(--slate); }
+
+    @media print {
+      body {
+        background: white;
+        color: black;
+      }
+      .page {
+        max-width: none;
+        padding: 0;
+      }
+      header, .card, .table-controls {
+        color: black;
+      }
+      button, .row-actions {
+        display: none !important;
+      }
+      .table-shell {
+        border: none;
+        padding: 0;
+      }
+      table {
+        font-size: 0.85rem;
+      }
+      thead th, tbody th {
+        position: static;
+        background: white;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Dietary &amp; Allergen Matrix Builder</h1>
+      <p class="lede">Generate a compliant, print-ready allergen declaration directly from your menu. Track the full UK/EU list of 14 mandatory allergens, toggle "may contain" risks, and export for service and compliance files.</p>
+    </header>
+
+    <section class="card">
+      <div class="inputs">
+        <label>
+          Venue Name
+          <input type="text" id="venueName" placeholder="e.g. The Observatory Dining Room" />
+        </label>
+        <label>
+          Dish Name
+          <input type="text" id="dishName" placeholder="e.g. North Sea Lobster Bisque" />
+        </label>
+        <label>
+          Ingredients (comma separated)
+          <textarea id="dishIngredients" placeholder="lobster, cream, butter, fennel, cognac, wheat flour"></textarea>
+        </label>
+      </div>
+      <button class="primary" id="addDishBtn">Add Dish to Matrix</button>
+    </section>
+
+    <section class="table-shell">
+      <div class="table-controls">
+        <div class="left">
+          <div>
+            <strong id="venueLabel">Venue: —</strong>
+          </div>
+          <div class="legend">
+            <span><span class="swatch yes"></span>Contains</span>
+            <span><span class="swatch maybe"></span>May Contain</span>
+            <span>Blank = Clear</span>
+          </div>
+        </div>
+        <div class="right">
+          <button class="secondary" id="autoDetectAll">Auto-Detect All</button>
+          <button class="secondary" id="copyCsv">Copy CSV</button>
+          <button class="primary" id="printTable">Print Matrix</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table id="matrixTable">
+          <thead>
+            <tr>
+              <th>Dish</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th colspan="15" style="text-align:center; padding:40px 12px; color:#666;">Add dishes above to populate the matrix.</th></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const allergens = [
+      { key: 'celery', label: 'Celery', keywords: ['celery', 'celeriac'] },
+      { key: 'gluten', label: 'Cereals containing Gluten', keywords: ['gluten', 'wheat', 'flour', 'bread', 'pasta', 'noodle', 'semolina', 'barley', 'rye', 'spelt', 'farro', 'beer', 'ale', 'pastry', 'crust', 'cracker', 'batter', 'panko', 'cake', 'cookie', 'couscous', 'bulgur'] },
+      { key: 'crustaceans', label: 'Crustaceans', keywords: ['prawn', 'shrimp', 'crab', 'lobster', 'langoustine', 'crayfish'] },
+      { key: 'eggs', label: 'Eggs', keywords: ['egg', 'yolk', 'albumen', 'meringue', 'mayonnaise', 'aioli', 'custard', 'hollandaise'] },
+      { key: 'fish', label: 'Fish', keywords: ['fish', 'salmon', 'cod', 'haddock', 'trout', 'anchovy', 'sardine', 'mackerel', 'bass', 'tuna', 'sea bream'] },
+      { key: 'lupin', label: 'Lupin', keywords: ['lupin', 'lupine'] },
+      { key: 'milk', label: 'Milk', keywords: ['milk', 'cream', 'butter', 'cheese', 'yoghurt', 'yogurt', 'whey', 'lactose', 'mascarpone', 'ricotta', 'custard', 'ghee'] },
+      { key: 'molluscs', label: 'Molluscs', keywords: ['mussel', 'clam', 'oyster', 'scallop', 'squid', 'octopus', 'cuttlefish', 'snail'] },
+      { key: 'mustard', label: 'Mustard', keywords: ['mustard', 'dijon', 'wholegrain mustard'] },
+      { key: 'peanuts', label: 'Peanuts', keywords: ['peanut', 'groundnut', 'satay'] },
+      { key: 'sesame', label: 'Sesame', keywords: ['sesame', 'tahini', 'gomasio'] },
+      { key: 'soybeans', label: 'Soybeans', keywords: ['soy', 'soya', 'tofu', 'tempeh', 'miso', 'edamame', 'tamari', 'shoyu'] },
+      { key: 'sulphites', label: 'Sulphur Dioxide/Sulphites', keywords: ['sulphite', 'sulfite', 'sulphur dioxide', 'dried fruit', 'wine', 'cider', 'preservative 220', 'preservative 221', 'preservative 222', 'preservative 223', 'preservative 224', 'preservative 225', 'preservative 228'] },
+      { key: 'treeNuts', label: 'Tree Nuts', keywords: ['almond', 'walnut', 'pecan', 'hazelnut', 'pistachio', 'macadamia', 'cashew', 'brazil nut', 'pine nut', 'praline', 'gianduja', 'marzipan'] }
+    ];
+
+    const stateCycle = ['no', 'yes', 'maybe'];
+    const dishes = [];
+    const keywordCache = new Map();
+
+    const tableEl = document.getElementById('matrixTable');
+    const venueInput = document.getElementById('venueName');
+    const venueLabel = document.getElementById('venueLabel');
+
+    function randomId() {
+      return (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `dish-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function escapeRegExp(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function keywordPattern(keyword) {
+      const key = keyword.toLowerCase();
+      if (!keywordCache.has(key)) {
+        const escaped = escapeRegExp(key.trim()).replace(/\s+/g, '\\s+');
+        keywordCache.set(key, new RegExp(`\\b${escaped}\\b`, 'i'));
+      }
+      return keywordCache.get(key);
+    }
+
+    function keywordHit(text, keyword) {
+      return keywordPattern(keyword).test(text);
+    }
+
+    function updateVenueLabel() {
+      venueLabel.textContent = `Venue: ${venueInput.value.trim() || '—'}`;
+    }
+
+    function createEmptyStates() {
+      return allergens.reduce((acc, allergen) => {
+        acc[allergen.key] = 'no';
+        return acc;
+      }, {});
+    }
+
+    function renderHeader() {
+      const thead = tableEl.querySelector('thead tr');
+      thead.innerHTML = '<th>Dish</th>' + allergens.map(a => `<th class="allergen-head"><span class="allergen-label">${a.label}</span></th>`).join('');
+    }
+
+    function renderBody() {
+      const tbody = tableEl.querySelector('tbody');
+      if (!dishes.length) {
+        tbody.innerHTML = '<tr><th colspan="15" style="text-align:center; padding:40px 12px; color:#666;">Add dishes above to populate the matrix.</th></tr>';
+        return;
+      }
+
+      tbody.innerHTML = dishes.map(dish => {
+        const cells = allergens.map(allergen => {
+          const state = dish.states[allergen.key];
+          const symbol = state === 'yes' ? '&#10003;' : state === 'maybe' ? '?' : '';
+          return `<td data-dish="${dish.id}" data-allergen="${allergen.key}" class="state-${state}">${symbol}</td>`;
+        }).join('');
+
+        return `
+          <tr>
+            <th>
+              <div>${dish.name || 'Untitled Dish'}</div>
+              <div class="dish-meta">${dish.ingredients || 'No ingredients listed'}</div>
+              <div class="row-actions">
+                <button class="ghost" data-action="auto" data-id="${dish.id}">Auto-detect</button>
+                <button class="ghost" data-action="remove" data-id="${dish.id}">Remove</button>
+              </div>
+            </th>
+            ${cells}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function addDish() {
+      const name = document.getElementById('dishName').value.trim();
+      const ingredients = document.getElementById('dishIngredients').value.trim();
+      if (!name || !ingredients) {
+        alert('Please enter both a dish name and its ingredients.');
+        return;
+      }
+      dishes.push({
+        id: randomId(),
+        name,
+        ingredients,
+        states: createEmptyStates()
+      });
+      document.getElementById('dishName').value = '';
+      document.getElementById('dishIngredients').value = '';
+      renderBody();
+    }
+
+    function autoDetectDish(dish) {
+      const ingredientsText = dish.ingredients.toLowerCase();
+      allergens.forEach(allergen => {
+        const hit = allergen.keywords.some(keyword => keywordHit(ingredientsText, keyword));
+        dish.states[allergen.key] = hit ? 'yes' : 'no';
+      });
+      renderBody();
+    }
+
+    function autoDetectAll() {
+      dishes.forEach(autoDetectDish);
+    }
+
+    function cycleState(dishId, allergenKey) {
+      const dish = dishes.find(d => d.id === dishId);
+      if (!dish) return;
+      const current = dish.states[allergenKey];
+      const idx = stateCycle.indexOf(current);
+      const next = stateCycle[(idx + 1) % stateCycle.length];
+      dish.states[allergenKey] = next;
+      renderBody();
+    }
+
+    function removeDish(dishId) {
+      const idx = dishes.findIndex(d => d.id === dishId);
+      if (idx !== -1) {
+        dishes.splice(idx, 1);
+        renderBody();
+      }
+    }
+
+    function copyCsv() {
+      if (!dishes.length) {
+        alert('Add at least one dish to copy the CSV.');
+        return;
+      }
+      const rows = [];
+      rows.push(['Dish', ...allergens.map(a => a.label)]);
+      dishes.forEach(dish => {
+        const row = [dish.name];
+        allergens.forEach(allergen => {
+          const state = dish.states[allergen.key];
+          row.push(state === 'yes' ? 'Yes' : state === 'maybe' ? 'May Contain' : '');
+        });
+        rows.push(row);
+      });
+      const csv = rows.map(row => row.map(val => `"${val.replace(/"/g, '""')}"`).join(',')).join('\n');
+      navigator.clipboard.writeText(csv).then(() => {
+        alert('CSV copied to clipboard.');
+      }).catch(() => {
+        alert('Unable to access clipboard in this context.');
+      });
+    }
+
+    document.getElementById('addDishBtn').addEventListener('click', addDish);
+    venueInput.addEventListener('input', updateVenueLabel);
+
+    document.getElementById('autoDetectAll').addEventListener('click', () => {
+      if (!dishes.length) {
+        alert('Add some dishes first.');
+        return;
+      }
+      autoDetectAll();
+    });
+
+    document.getElementById('copyCsv').addEventListener('click', copyCsv);
+    document.getElementById('printTable').addEventListener('click', () => window.print());
+
+    tableEl.addEventListener('click', (event) => {
+      const cell = event.target.closest('td');
+      if (cell && cell.dataset.dish) {
+        cycleState(cell.dataset.dish, cell.dataset.allergen);
+      }
+
+      const actionBtn = event.target.closest('button[data-action]');
+      if (actionBtn) {
+        const id = actionBtn.dataset.id;
+        if (actionBtn.dataset.action === 'auto') {
+          const dish = dishes.find(d => d.id === id);
+          if (dish) autoDetectDish(dish);
+        } else if (actionBtn.dataset.action === 'remove') {
+          removeDish(id);
+        }
+      }
+    });
+
+    renderHeader();
+    renderBody();
+    updateVenueLabel();
+  </script>
+</body>
+</html>

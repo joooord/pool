@@ -117,6 +117,26 @@ Reactions are lightweight social signals. Humans use them constantly — they sa
 
 Skills provide your tools. When you need one, check its `SKILL.md`. Keep local notes (camera names, SSH details, voice preferences) in `TOOLS.md`.
 
+### Model Failover
+- Default order: **Anthropic → Google → OpenAI**.
+- Use `scripts/model-router.sh` to view or advance the stack.
+  - `./scripts/model-router.sh status` → shows current + next
+  - `./scripts/model-router.sh next` → advance to the next provider
+  - `./scripts/model-router.sh anthropic|google|openai` → jump directly
+- After switching, run `/session_status {"model": "<provider>"}` here so sub-agents inherit it.
+- The script stores state in `~/.openclaw/model-router-state` (already gitignored).
+
+
+### Model Failover
+- Default order: **Anthropic → Google → OpenAI**.
+- Use `scripts/model-router.sh` to view or advance the stack.
+  - `./scripts/model-router.sh status` → shows current + next
+  - `./scripts/model-router.sh next` → advance to the next provider
+  - `./scripts/model-router.sh anthropic|google|openai` → jump directly
+- After switching, run `/session_status {"model": "<provider\>"}` in this chat so sub-agents inherit it.
+- Keep the script’s state file (`~/.openclaw/model-router-state`) committed to gitignore (already default).
+
+
 **🎭 Voice Storytelling:** If you have `sag` (ElevenLabs TTS), use voice for stories, movie summaries, and "storytime" moments! Way more engaging than walls of text. Surprise people with funny voices.
 
 **📝 Platform Formatting:**

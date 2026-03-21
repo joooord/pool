@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Review Responder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f0f0f;
+      --panel: #171717;
+      --text: #fdfdfd;
+      --muted: #adadad;
+      --accent: #d4a85a;
+      --border: rgba(255, 255, 255, 0.08);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 18px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 2vw, 2.4rem);
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      max-width: 640px;
+      line-height: 1.5;
+    }
+
+    .api-key {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    select,
+    textarea,
+    input[type="text"],
+    input[type="number"] {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0b0b0b;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 0.95rem;
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 14px 18px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.2s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, #d4a85a, #c29134);
+      color: #0b0b0b;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button:not(:disabled):active {
+      transform: translateY(1px);
+    }
+
+    .output-wrapper {
+      flex: 1;
+      min-height: 220px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 20px;
+      background: #101010;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .output-placeholder {
+      color: var(--muted);
+    }
+
+    .copy-button {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(212, 168, 90, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(212, 168, 90, 0.3);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .log {
+      border-top: 1px solid var(--border);
+      padding-top: 18px;
+    }
+
+    .log h3 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .log-list {
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .log-list li {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .log-list strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .status {
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .status.error {
+      color: #ff8474;
+    }
+
+    .loader {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .loader span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    .loader span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .loader span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.2; transform: translateY(0); }
+      40% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    @media (max-width: 720px) {
+      .panel {
+        padding: 18px;
+      }
+
+      .output-wrapper {
+        min-height: 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>AI Review Responder</h1>
+      <p class="subtitle">Crafted replies for hospitality operators. Paste the guest review, set the context, and deliver on-brand responses at luxury standard.</p>
+      <input id="apiKey" class="api-key" type="text" placeholder="OpenRouter API Key" autocomplete="off" />
+    </header>
+
+    <div class="panels">
+      <section class="panel" aria-label="Input panel">
+        <label>
+          Platform
+          <select id="platform">
+            <option>Google</option>
+            <option>TripAdvisor</option>
+            <option>Booking.com</option>
+            <option>Other</option>
+          </select>
+        </label>
+
+        <label>
+          Star Rating
+          <select id="rating">
+            <option value="5">★★★★★ (5)</option>
+            <option value="4">★★★★☆ (4)</option>
+            <option value="3">★★★☆☆ (3)</option>
+            <option value="2">★★☆☆☆ (2)</option>
+            <option value="1">★☆☆☆☆ (1)</option>
+          </select>
+        </label>
+
+        <label>
+          Venue Type
+          <select id="venue">
+            <option>Hotel</option>
+            <option>Restaurant</option>
+            <option>Cafe</option>
+            <option>Pub</option>
+            <option>Heritage Experience</option>
+            <option>Other</option>
+          </select>
+        </label>
+
+        <label>
+          Tone
+          <select id="tone">
+            <option>Luxury &amp; Formal</option>
+            <option>Warm &amp; Friendly</option>
+            <option>Casual &amp; Relaxed</option>
+          </select>
+        </label>
+
+        <label>
+          Guest Review
+          <textarea id="review" placeholder="“We spent a long weekend at The Rowallan and honestly didn’t want to leave. The suite overlooked the gardens, breakfast was indulgent, and every team member greeted us by name. Only tiny gripe was the valet queue on Saturday night, but overall this is a property we’ll be raving about.”"></textarea>
+        </label>
+
+        <div class="controls">
+          <button id="generate" class="primary">Generate Response</button>
+          <button id="regenerate" class="secondary" disabled>Regenerate</button>
+        </div>
+
+        <p id="status" class="status"></p>
+      </section>
+
+      <section class="panel" aria-label="Output panel">
+        <div class="output-wrapper" id="output">
+          <button id="copy" class="copy-button" disabled>Copy</button>
+          <p class="output-placeholder">Responses will appear here. Keep it gracious, specific, and on brand.</p>
+        </div>
+
+        <div class="log">
+          <h3>Session Log (Last 5)</h3>
+          <ul id="logList" class="log-list">
+            <li>Awaiting your first response.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const apiKeyInput = document.getElementById('apiKey');
+    const platformSelect = document.getElementById('platform');
+    const ratingSelect = document.getElementById('rating');
+    const venueSelect = document.getElementById('venue');
+    const toneSelect = document.getElementById('tone');
+    const reviewInput = document.getElementById('review');
+    const generateBtn = document.getElementById('generate');
+    const regenerateBtn = document.getElementById('regenerate');
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+    const copyBtn = document.getElementById('copy');
+    const logList = document.getElementById('logList');
+
+    const platformGuidance = {
+      'Google': 'Google responses should be succinct (2-3 short paragraphs) and respect the platform character expectations.',
+      'TripAdvisor': 'TripAdvisor allows more narrative detail—provide a layered response with specifics and confidence.',
+      'Booking.com': 'Booking.com readers value practicality—focus on reassurance, clarity, and next steps.',
+      'Other': 'Keep the response balanced, professional, and tailored to hospitality best practice.'
+    };
+
+    let lastRequest = null;
+    const sessionLog = [];
+
+    // Load API key from localStorage
+    const savedKey = localStorage.getItem('openrouter_key');
+    if (savedKey) {
+      apiKeyInput.value = savedKey;
+    }
+
+    apiKeyInput.addEventListener('input', (event) => {
+      localStorage.setItem('openrouter_key', event.target.value.trim());
+    });
+
+    generateBtn.addEventListener('click', () => handleRequest());
+    regenerateBtn.addEventListener('click', () => {
+      if (lastRequest) {
+        handleRequest(true);
+      }
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      const responseText = outputEl.querySelector('.response-text');
+      if (!responseText) return;
+      try {
+        await navigator.clipboard.writeText(responseText.textContent.trim());
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => (copyBtn.textContent = 'Copy'), 1600);
+      } catch (error) {
+        statusEl.textContent = 'Unable to copy. Please copy manually.';
+        statusEl.classList.add('error');
+      }
+    });
+
+    function buildSystemPrompt({ platform, rating, venue, tone }) {
+      const platformNote = platformGuidance[platform] || platformGuidance['Other'];
+      return `You craft guest review responses for a premium ${venue.toLowerCase()}.\nPlatform: ${platform}.\nStar rating: ${rating}.\nTone: ${tone}.\n${platformNote}\nBlend gratitude, accountability, and forward-looking reassurance. Never use the word "discount". If you reference an incentive for a return stay, describe it as a "loyalty invitation" or "complimentary gesture". Reference details from the guest review directly, keep the response platform-appropriate, and close with a confident sign-off.`;
+    }
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle('error', isError);
+    }
+
+    function setLoading(isLoading) {
+      if (isLoading) {
+        setStatus('Generating response…');
+        statusEl.innerHTML = '<span class="loader"><span></span><span></span><span></span></span> Crafting your response…';
+      }
+      generateBtn.disabled = isLoading;
+      regenerateBtn.disabled = isLoading || !lastRequest;
+      copyBtn.disabled = isLoading;
+    }
+
+    function renderOutput(text) {
+      outputEl.innerHTML = '';
+      outputEl.appendChild(copyBtn);
+      const para = document.createElement('p');
+      para.className = 'response-text';
+      para.style.whiteSpace = 'pre-wrap';
+      para.textContent = text.trim();
+      outputEl.appendChild(para);
+      copyBtn.disabled = false;
+    }
+
+    function appendLog(entry) {
+      sessionLog.unshift(entry);
+      if (sessionLog.length > 5) sessionLog.pop();
+
+      logList.innerHTML = '';
+      sessionLog.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${item.platform}</strong> · ${item.venue} · ${item.tone}<br>${item.snippet}`;
+        logList.appendChild(li);
+      });
+    }
+
+    async function handleRequest(isRegenerate = false) {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        setStatus('Enter your OpenRouter API key to continue.', true);
+        return;
+      }
+
+      let requestPayload;
+      if (isRegenerate && lastRequest) {
+        requestPayload = lastRequest;
+      } else {
+        const review = reviewInput.value.trim();
+        if (!review) {
+          setStatus('Paste the guest review before generating.', true);
+          return;
+        }
+
+        requestPayload = {
+          platform: platformSelect.value,
+          rating: ratingSelect.value,
+          venue: venueSelect.value,
+          tone: toneSelect.value,
+          review
+        };
+        lastRequest = requestPayload;
+      }
+
+      setLoading(true);
+
+      try {
+        const systemPrompt = buildSystemPrompt(requestPayload);
+        const body = {
+          model: 'anthropic/claude-3-5-haiku',
+          temperature: 0.7,
+          max_tokens: 500,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: requestPayload.review }
+          ]
+        };
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            'HTTP-Referer': window.location.origin || 'http://localhost',
+            'X-Title': 'AI Review Responder'
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          const message = data?.error?.message || 'Failed to generate response.';
+          throw new Error(message);
+        }
+
+        const aiMessage = data?.choices?.[0]?.message?.content;
+        if (!aiMessage) {
+          throw new Error('Unexpected API response format.');
+        }
+
+        const replyText = Array.isArray(aiMessage)
+          ? aiMessage.map(part => typeof part === 'string' ? part : part.text || '').join('\n').trim()
+          : aiMessage.toString().trim();
+
+        renderOutput(replyText);
+        setStatus('Response ready.');
+        regenerateBtn.disabled = false;
+
+        appendLog({
+          platform: requestPayload.platform,
+          venue: requestPayload.venue,
+          tone: requestPayload.tone,
+          snippet: replyText.slice(0, 140) + (replyText.length > 140 ? '…' : '')
+        });
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || 'Something went wrong. Try again.', true);
+      } finally {
+        setLoading(false);
+      }
+    }
+  </script>
+</body>
+</html>

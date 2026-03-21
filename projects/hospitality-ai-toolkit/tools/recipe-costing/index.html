@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GP & Recipe Costing Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f0f0f;
+            --surface-color: #1a1a1a;
+            --border-color: #333333;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent-color: #d4a85a;
+            --accent-hover: #b88f4b;
+            --danger-color: #e55353;
+            
+            --allergen-bg: #2a2a2a;
+            --allergen-text: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-weight: 400;
+            font-size: 1.5rem;
+            letter-spacing: 0.05em;
+            color: var(--text-primary);
+        }
+
+        .accent-text {
+            color: var(--accent-color);
+        }
+
+        /* Layout */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+        }
+
+        /* Sidebar / Recipe List */
+        .sidebar {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .sidebar h2 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .recipe-list {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .recipe-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .recipe-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+        }
+
+        .recipe-item.active {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            font-weight: 500;
+        }
+        
+        .recipe-item.active .delete-btn {
+            color: var(--bg-color);
+            opacity: 0.7;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .dish-title-input {
+            font-size: 1.5rem !important;
+            font-weight: 300;
+            border: none !important;
+            border-bottom: 1px solid var(--border-color) !important;
+            border-radius: 0 !important;
+            padding: 0.5rem 0 !important;
+            background: transparent !important;
+        }
+
+        .dish-title-input:focus {
+            border-bottom-color: var(--accent-color) !important;
+        }
+
+        /* Buttons */
+        button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-secondary);
+        }
+        
+        .btn-icon {
+            color: var(--text-secondary);
+            padding: 0.25rem;
+        }
+        
+        .btn-icon:hover {
+            color: var(--danger-color);
+        }
+
+        /* Ingredients Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+        }
+
+        th {
+            text-align: left;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        td {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .ingredient-row input {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Results Panel */
+        .results-panel {
+            background: var(--bg-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+
+        .result-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .result-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .result-value {
+            font-size: 1.75rem;
+            font-weight: 300;
+            color: var(--text-primary);
+        }
+
+        .result-value.highlight {
+            color: var(--accent-color);
+            font-weight: 400;
+        }
+
+        /* Allergens */
+        .allergens-container {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .allergen-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .allergen-pill {
+            background: var(--allergen-bg);
+            color: var(--allergen-text);
+            padding: 0.25rem 0.75rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border: 1px solid var(--border-color);
+        }
+
+        .allergen-pill.dairy { border-color: #8ab4f8; color: #8ab4f8; }
+        .allergen-pill.gluten { border-color: #f29900; color: #f29900; }
+        .allergen-pill.peanuts { border-color: #e2725b; color: #e2725b; }
+        .allergen-pill.treenuts { border-color: #8d6e63; color: #8d6e63; }
+        .allergen-pill.eggs { border-color: #fdd835; color: #fdd835; }
+        .allergen-pill.fish { border-color: #4fc3f7; color: #4fc3f7; }
+        .allergen-pill.crustaceans { border-color: #ff8a65; color: #ff8a65; }
+        .allergen-pill.molluscs { border-color: #bcaaa4; color: #bcaaa4; }
+        .allergen-pill.soya { border-color: #aed581; color: #aed581; }
+        .allergen-pill.celery { border-color: #81c784; color: #81c784; }
+        .allergen-pill.mustard { border-color: #ffd54f; color: #ffd54f; }
+        .allergen-pill.sesame { border-color: #ffb74d; color: #ffb74d; }
+        .allergen-pill.sulphites { border-color: #ba68c8; color: #ba68c8; }
+        .allergen-pill.lupin { border-color: #fff176; color: #fff176; }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+            .container {
+                padding: 0;
+            }
+            .sidebar, .btn-primary, .btn-secondary, header button {
+                display: none !important;
+            }
+            .app-layout {
+                display: block;
+            }
+            .card {
+                border: none;
+                padding: 0;
+            }
+            .results-panel {
+                border: 1px solid #ccc;
+                background: #f9f9f9;
+            }
+            input {
+                border: none !important;
+                background: transparent !important;
+                color: black !important;
+            }
+            .dish-title-input {
+                font-size: 2rem !important;
+                color: black !important;
+            }
+            .text-secondary {
+                color: #555 !important;
+            }
+            .allergen-pill {
+                border-color: #ccc;
+                color: black;
+            }
+            .btn-icon {
+                display: none;
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .app-layout {
+                grid-template-columns: 1fr;
+            }
+            .results-panel {
+                grid-template-columns: 1fr 1fr;
+            }
+            .form-row {
+                flex-direction: column;
+            }
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr {
+                margin-bottom: 1rem;
+                border: 1px solid var(--border-color);
+                padding: 1rem;
+                border-radius: 4px;
+            }
+            td {
+                border: none;
+                position: relative;
+                padding-left: 50%;
+                text-align: right;
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+            }
+            td:before {
+                position: absolute;
+                top: 0.5rem;
+                left: 0;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                color: var(--text-secondary);
+            }
+            td:nth-of-type(1):before { content: "Ingredient"; }
+            td:nth-of-type(2):before { content: "Qty"; }
+            td:nth-of-type(3):before { content: "Unit"; }
+            td:nth-of-type(4):before { content: "Cost/Unit (£)"; }
+            td:nth-of-type(5):before { content: "Total (£)"; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><span class="accent-text">GP</span> Costing</h1>
+        <button class="btn-secondary" onclick="window.print()">Print Recipe Card</button>
+    </header>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2>Your Recipes</h2>
+            <ul class="recipe-list" id="recipeList">
+                <!-- Populated via JS -->
+            </ul>
+            <button class="btn-secondary" style="width: 100%;" onclick="createNewRecipe()">+ New Recipe</button>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            
+            <!-- Recipe Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div style="flex-grow: 1; margin-right: 2rem;">
+                        <input type="text" id="dishName" class="dish-title-input" placeholder="Enter Dish Name..." oninput="updateCurrentRecipe()">
+                    </div>
+                    <div>
+                        <label>Target GP%</label>
+                        <input type="number" id="targetGP" value="70" step="1" style="width: 80px;" oninput="calculateCosting()">
+                    </div>
+                    <div style="margin-left: 1rem;">
+                        <label>Portions</label>
+                        <input type="number" id="portions" value="1" step="1" style="width: 80px;" oninput="calculateCosting()">
+                    </div>
+                </div>
+
+                <div class="ingredients-section">
+                    <table id="ingredientsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%;">Ingredient</th>
+                                <th style="width: 15%;">Qty</th>
+                                <th style="width: 15%;">Unit</th>
+                                <th style="width: 15%;">Cost/Unit (£)</th>
+                                <th style="width: 10%;">Total (£)</th>
+                                <th style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="ingredientsBody">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                    
+                    <button class="btn-secondary" onclick="addIngredientRow()">+ Add Ingredient</button>
+                </div>
+
+                <div class="allergens-container" id="allergensContainer">
+                    <label>Allergens Detected</label>
+                    <div class="allergen-pills" id="allergenPills">
+                        <span class="allergen-pill">None detected</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="results-panel">
+                <div class="result-item">
+                    <span class="result-label">Cost Per Portion</span>
+                    <span class="result-value">£<span id="portionCost">0.00</span></span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Rec. Selling Price (ex VAT)</span>
+                    <span class="result-value highlight">£<span id="sellingPrice">0.00</span></span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Actual Selling Price</span>
+                    <span class="result-value" style="display:flex; align-items:center;">
+                        <span style="font-size: 1.5rem; margin-right: 0.2rem;">£</span>
+                        <input type="number" id="actualPrice" step="0.01" style="font-size: 1.5rem; width: 100px; padding: 0.2rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-primary);" oninput="calculateCosting()">
+                    </span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Actual GP%</span>
+                    <span class="result-value"><span id="actualGP">0</span>%</span>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+</div>
+
+<script>
+    // State
+    let recipes = [
+        {
+            id: generateId(),
+            name: "Truffle Roasted Scallops",
+            targetGP: 72,
+            portions: 4,
+            ingredients: [
+                { id: generateId(), name: "King Scallops", qty: 12, unit: "ea", costPerUnit: 1.50 },
+                { id: generateId(), name: "Unsalted Butter", qty: 100, unit: "g", costPerUnit: 0.008 },
+                { id: generateId(), name: "Black Truffle Paste", qty: 20, unit: "g", costPerUnit: 0.45 },
+                { id: generateId(), name: "Double Cream", qty: 50, unit: "ml", costPerUnit: 0.005 },
+                { id: generateId(), name: "Chives", qty: 10, unit: "g", costPerUnit: 0.05 }
+            ]
+        }
+    ];
+    let currentRecipeId = recipes[0].id;
+
+    // Allergen Dictionary
+    const ALLERGENS = {
+        dairy: { name: 'Dairy', keywords: ['milk', 'cream', 'butter', 'cheese', 'yoghurt', 'whey', 'ghee', 'mascarpone'] },
+        gluten: { name: 'Gluten', keywords: ['flour', 'bread', 'wheat', 'barley', 'rye', 'oats', 'pasta', 'pastry', 'panko', 'soy sauce', 'malt'] },
+        peanuts: { name: 'Peanuts', keywords: ['peanut', 'groundnut'] },
+        treenuts: { name: 'Tree Nuts', keywords: ['almond', 'hazelnut', 'walnut', 'cashew', 'pecan', 'brazil', 'pistachio', 'macadamia', 'pine nut'] },
+        eggs: { name: 'Eggs', keywords: ['egg', 'mayonnaise', 'meringue'] },
+        fish: { name: 'Fish', keywords: ['fish', 'salmon', 'tuna', 'cod', 'haddock', 'anchovy', 'bass', 'halibut'] },
+        crustaceans: { name: 'Crustaceans', keywords: ['prawn', 'shrimp', 'crab', 'lobster', 'crayfish', 'scampi'] },
+        molluscs: { name: 'Molluscs', keywords: ['mussel', 'oyster', 'squid', 'octopus', 'scallop', 'clam', 'cockle'] },
+        soya: { name: 'Soya', keywords: ['soy', 'soya', 'tofu', 'edamame', 'miso'] },
+        celery: { name: 'Celery', keywords: ['celery', 'celeriac'] },
+        mustard: { name: 'Mustard', keywords: ['mustard'] },
+        sesame: { name: 'Sesame', keywords: ['sesame', 'tahini'] },
+        sulphites: { name: 'Sulphites', keywords: ['wine', 'vinegar', 'sulphite', 'sulfite'] },
+        lupin: { name: 'Lupin', keywords: ['lupin'] }
+    };
+
+    // Utils
+    function generateId() {
+        return Math.random().toString(36).substr(2, 9);
+    }
+
+    // App Init
+    function init() {
+        renderRecipeList();
+        loadRecipe(currentRecipeId);
+    }
+
+    // Recipe Management
+    function createNewRecipe() {
+        const newRecipe = {
+            id: generateId(),
+            name: "New Dish",
+            targetGP: 70,
+            portions: 1,
+            ingredients: [
+                { id: generateId(), name: "", qty: 1, unit: "kg", costPerUnit: 0.00 }
+            ]
+        };
+        recipes.push(newRecipe);
+        currentRecipeId = newRecipe.id;
+        renderRecipeList();
+        loadRecipe(currentRecipeId);
+    }
+
+    function deleteRecipe(id, event) {
+        event.stopPropagation();
+        if (recipes.length === 1) return; // Prevent deleting last recipe
+        
+        recipes = recipes.filter(r => r.id !== id);
+        if (currentRecipeId === id) {
+            currentRecipeId = recipes[0].id;
+        }
+        renderRecipeList();
+        loadRecipe(currentRecipeId);
+    }
+
+    function loadRecipe(id) {
+        currentRecipeId = id;
+        const recipe = recipes.find(r => r.id === id);
+        if (!recipe) return;
+
+        document.getElementById('dishName').value = recipe.name;
+        document.getElementById('targetGP').value = recipe.targetGP;
+        document.getElementById('portions').value = recipe.portions || 1;
+
+        renderRecipeList();
+        renderIngredients();
+        calculateCosting();
+    }
+
+    function updateCurrentRecipe() {
+        const recipe = recipes.find(r => r.id === currentRecipeId);
+        if (!recipe) return;
+
+        recipe.name = document.getElementById('dishName').value || "Unnamed Dish";
+        recipe.targetGP = parseFloat(document.getElementById('targetGP').value) || 0;
+        recipe.portions = parseFloat(document.getElementById('portions').value) || 1;
+        
+        // Only update name in list if it changes, to avoid losing focus
+        const listItem = document.getElementById('recipe-item-' + currentRecipeId);
+        if (listItem) {
+            listItem.querySelector('.recipe-name').textContent = recipe.name;
+        }
+    }
+
+    // Rendering
+    function renderRecipeList() {
+        const list = document.getElementById('recipeList');
+        list.innerHTML = '';
+        recipes.forEach(r => {
+            const li = document.createElement('li');
+            li.className = `recipe-item ${r.id === currentRecipeId ? 'active' : ''}`;
+            li.id = 'recipe-item-' + r.id;
+            li.onclick = () => loadRecipe(r.id);
+            
+            li.innerHTML = `
+                <span class="recipe-name">${r.name}</span>
+                ${recipes.length > 1 ? `<span class="delete-btn" onclick="deleteRecipe('${r.id}', event)">×</span>` : ''}
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function renderIngredients() {
+        const tbody = document.getElementById('ingredientsBody');
+        tbody.innerHTML = '';
+        const recipe = recipes.find(r => r.id === currentRecipeId);
+        
+        recipe.ingredients.forEach(ing => {
+            const tr = document.createElement('tr');
+            tr.className = 'ingredient-row';
+            tr.innerHTML = `
+                <td><input type="text" value="${ing.name}" oninput="updateIngredient('${ing.id}', 'name', this.value)" placeholder="Ingredient name"></td>
+                <td><input type="number" value="${ing.qty}" step="any" oninput="updateIngredient('${ing.id}', 'qty', this.value)"></td>
+                <td><input type="text" value="${ing.unit}" oninput="updateIngredient('${ing.id}', 'unit', this.value)" placeholder="kg, g, ea"></td>
+                <td><input type="number" value="${ing.costPerUnit}" step="0.001" oninput="updateIngredient('${ing.id}', 'costPerUnit', this.value)"></td>
+                <td style="font-weight: 500;">£<span id="total-${ing.id}">${(ing.qty * ing.costPerUnit).toFixed(2)}</span></td>
+                <td><button class="btn-icon" onclick="removeIngredient('${ing.id}')" title="Remove">×</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Ingredient Management
+    function addIngredientRow() {
+        const recipe = recipes.find(r => r.id === currentRecipeId);
+        recipe.ingredients.push({
+            id: generateId(),
+            name: "",
+            qty: 1,
+            unit: "",
+            costPerUnit: 0
+        });
+        renderIngredients();
+        calculateCosting();
+    }
+
+    function removeIngredient(id) {
+        const recipe = recipes.find(r => r.id === currentRecipeId);
+        recipe.ingredients = recipe.ingredients.filter(ing => ing.id !== id);
+        renderIngredients();
+        calculateCosting();
+    }
+
+    function updateIngredient(id, field, value) {
+        const recipe = recipes.find(r => r.id === currentRecipeId);
+        const ing = recipe.ingredients.find(i => i.id === id);
+        if (field === 'qty' || field === 'costPerUnit') {
+            ing[field] = parseFloat(value) || 0;
+            document.getElementById(`total-${id}`).textContent = (ing.qty * ing.costPerUnit).toFixed(2);
+            calculateCosting();
+        } else {
+            ing[field] = value;
+            if (field === 'name') {
+                detectAllergens();
+            }
+        }
+    }
+
+    // Calculations
+    function calculateCosting() {
+        updateCurrentRecipe();
+        const recipe = recipes.find(r => r.id === currentRecipeId);
+        
+        let totalCost = 0;
+        recipe.ingredients.forEach(ing => {
+            totalCost += (ing.qty * ing.costPerUnit);
+        });
+
+        const portions = recipe.portions || 1;
+        const portionCost = totalCost / portions;
+        const targetGP = recipe.targetGP / 100;
+        
+        // Selling Price = Cost / (1 - GP%)
+        let recommendedPrice = 0;
+        if (targetGP < 1) {
+            recommendedPrice = portionCost / (1 - targetGP);
+        }
+
+        // Display updates
+        document.getElementById('portionCost').textContent = portionCost.toFixed(2);
+        document.getElementById('sellingPrice').textContent = recommendedPrice.toFixed(2);
+        
+        let actualPrice = parseFloat(document.getElementById('actualPrice').value);
+        if (isNaN(actualPrice) || actualPrice <= 0) {
+            document.getElementById('actualGP').textContent = '—';
+        } else {
+            let gp = ((actualPrice - portionCost) / actualPrice) * 100;
+            document.getElementById('actualGP').textContent = gp.toFixed(1);
+        }
+
+        detectAllergens();
+    }
+
+    // Allergens
+    function detectAllergens() {
+        const recipe = recipes.find(r => r.id === currentRecipeId);
+        const detected = new Set();
+        
+        recipe.ingredients.forEach(ing => {
+            if (!ing.name) return;
+            const text = ing.name.toLowerCase();
+            
+            for (const [key, data] of Object.entries(ALLERGENS)) {
+                for (const keyword of data.keywords) {
+                    // Match word boundaries to prevent partial matches like 'grape' matching 'ape' (if 'ape' was a keyword)
+                    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+                    if (regex.test(text)) {
+                        detected.add(key);
+                        break;
+                    }
+                }
+            }
+        });
+
+        renderAllergens(detected);
+    }
+
+    function renderAllergens(detectedSet) {
+        const container = document.getElementById('allergenPills');
+        container.innerHTML = '';
+        
+        if (detectedSet.size === 0) {
+            container.innerHTML = '<span class="allergen-pill" style="opacity: 0.5;">None detected</span>';
+            return;
+        }
+
+        detectedSet.forEach(key => {
+            const span = document.createElement('span');
+            span.className = `allergen-pill ${key}`;
+            span.textContent = ALLERGENS[key].name;
+            container.appendChild(span);
+        });
+    }
+
+    // Run
+    init();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+sed -i '/getProfile: ()/a \    getActiveProfile: () => JSON.parse(JSON.stringify(profileState)),' /home/openclaw/.openclaw/workspace/hospitality-pro/assets/scripts/venue-profile.js
+sed -i '/getActiveProfile: ()/a \    openModal: () => openModal(),' /home/openclaw/.openclaw/workspace/hospitality-pro/assets/scripts/venue-profile.js
+sed -i '/openModal: ()/a \    buildPromptContext: () => {\n      const p = profileState;\n      if (!p || !p.name) return "";\n      return `Venue context: ${p.name}. Type: ${p.type}. Tone: ${p.tone}.\\nNotes & Non-negotiables: ${p.nonNegotiables}`;\n    },' /home/openclaw/.openclaw/workspace/hospitality-pro/assets/scripts/venue-profile.js
