@@ -4,7 +4,7 @@
 - [x] Review `hospitality-pro/MASTER_PLAN.md` and define the next sub-task.
 - [x] Sub-task 1: Build out the ultimate Cocktail Calculator (ROI, ABV%, dilution, costing).
 - [x] Sub-task 2: Polish the Rota Optimizer and make it production-ready for "Hidden".
-- [ ] Sub-task 3: Build the Inventory & Supplier Ordering module.
+- [x] Sub-task 3: Build the Inventory & Supplier Ordering module.
 - [x] Sub-task 4: Build the Daily Prep & Operations module.
 - [ ] Sub-task 5: Assemble into a unified, clean, premium dashboard application.
 
